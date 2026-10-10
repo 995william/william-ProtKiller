@@ -1,0 +1,31 @@
+# 编译生成的 Windows 可执行二进制文件 (单文件 EXE 发布在 GitHub Releases)
+*.exe
+PortKiller.exe
+
+# 编译临时与测试产物
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.test
+*.out
+
+# IDE 与编辑器配置
+.vscode/
+.idea/
+*.suo
+*.user
+*.useros
+*.sln.docstates
+
+# 操作系统临时文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# 日志与临时转储
+*.log
+*.tmp

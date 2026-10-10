@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PortKiller Pro</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* 苹果级专属字体与视窗基础重置 */
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      user-select: none;
+      background: #f5f6fa;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.012em;
+    }
+
+    /* 苹果数字等宽字体栈 */
+    .font-mono-num {
+      font-family: "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, "PingFang SC", monospace;
+      font-feature-settings: "tnum";
+    }
+
+    /* 苹果缓动 */
+    :root {
+      --spring: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 纯正苹果瓷白视窗外壳 (外围圆角与柔和投影由 Win11 DWM 硬件接管，移除内部多余边框与内缩圆角) */
+    .apple-window-frame {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #f5f6fa;
+    }
+
+    .apple-card-blur {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4px 16px -2px rgba(140, 160, 195, 0.1);
+    }
+
+    /* Windows 控制键原生悬浮效果 */
+    .win-control-btn {
+      width: 44px;
+      height: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.15s ease, color 0.15s ease;
+      cursor: pointer;
+    }
+    .win-control-btn:hover {
+      background-color: rgba(0, 0, 0, 0.06);
+    }
+    .win-close-btn:hover {
+      background-color: #e81123 !important;
+      color: #ffffff !important;
+    }
+
+    /* 列表精细滚动条 */
+    .list-scroll::-webkit-scrollbar { width: 5px; }
+    .list-scroll::-webkit-scrollbar-track { background: transparent; }
+    .list-scroll::-webkit-scrollbar-thumb { background: rgba(140, 155, 180, 0.3); border-radius: 9999px; }
+    .list-scroll::-webkit-scrollbar-thumb:hover { background: rgba(140, 155, 180, 0.55); }
+
+    /* 强杀消失动效 */
+    @keyframes kill-dissolve {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.98); background-color: rgba(255, 59, 48, 0.15); }
+      100% { transform: scale(0.92); opacity: 0; }
+    }
+    .row-kill-anim {
+      animation: kill-dissolve 0.4s var(--spring) forwards;
+    }
+  </style>
+</head>
+<body class="w-full h-full m-0 p-0 overflow-hidden select-none antialiased bg-[#f5f6fa]">
+
+  <!-- ============================================================== -->
+  <!-- 桌面 EXE 主窗口容器 (圆角裁切 14px，纯正苹果瓷白质感) -->
+  <!-- ============================================================== -->
+  <div id="desktopWindowShell" class="w-full h-full flex flex-col apple-window-frame text-slate-800">
+
+    <!-- ============================================================== -->
+    <!-- 沉浸式标题栏：支持拖拽移动窗口，苹果微标与 Windows 控制按键 -->
+    <!-- ============================================================== -->
+    <header id="winTitlebar" class="h-10 pl-3.5 pr-0 flex items-center justify-between border-b border-black/5 shrink-0 bg-white/75 backdrop-blur-md select-none cursor-default">
+      
+      <!-- 左侧：苹果微拟物 Logo、标题与 UAC 特权徽章 -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-5.5 h-5.5 rounded-lg bg-gradient-to-tr from-[#0071e3] to-[#4facfe] flex items-center justify-center text-white shadow-2xs">
+          <!-- SF Symbol 风格闪电图标 -->
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-xs tracking-tight text-slate-900">PortKiller Pro</span>
+          <span class="text-[10px] font-mono-num text-slate-400 bg-black/5 px-1.5 py-0.2 rounded">v2.5</span>
+          <span class="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.2 rounded font-semibold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            管理员特权
+          </span>
+        </div>
+      </div>
+
+      <!-- 中间：SF Symbol 风格的音效切换与快速模拟功能 -->
+      <div class="flex items-center gap-2 text-xs">
+        <button id="soundToggleBtn" class="px-2.5 py-1 rounded-lg text-[11px] text-slate-600 hover:bg-black/5 transition cursor-pointer flex items-center gap-1.5 font-medium">
+          <!-- SF Symbol 扬声器图标 -->
+          <svg id="soundIconSvg" class="w-3.5 h-3.5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <span id="soundTxt">触觉音效</span>
+        </button>
+
+        <button id="mockInjectBtn" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white border border-slate-200/90 hover:border-slate-300 text-slate-700 shadow-2xs transition cursor-pointer flex items-center gap-1.5">
+          <!-- SF Symbol 加号圆环图标 -->
+          <svg class="w-3.5 h-3.5 text-[#0071e3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          <span>模拟占用</span>
+        </button>
+      </div>
+
+      <!-- 右侧：Windows 原生三键控制区 -->
+      <div class="h-full flex items-center">
+        <!-- 最小化 (—) -->
+        <button id="winMinBtn" class="win-control-btn text-slate-600 hover:text-black" title="最小化">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 8h12v1H2z"/>
+          </svg>
+        </button>
+        <!-- 最大化 (▢) -->
+        <button id="winMaxBtn" class="win-control-btn text-slate-600 hover:text-black" title="最大化/还原">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="2.5" y="2.5" width="11" height="11" rx="0.5"/>
+          </svg>
+        </button>
+        <!-- 关闭 (✕) 红底悬浮 -->
+        <button id="winCloseBtn" class="win-control-btn win-close-btn text-slate-600" title="关闭程序">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+            <path d="M3 3l10 10M13 3L3 13"/>
+          </svg>
+        </button>
+      </div>
+
+    </header>
+
+    <!-- ============================================================== -->
+    <!-- 视窗主体：左侧边栏 (雷达+分类) + 右侧主控台 (搜索+列表) -->
+    <!-- ============================================================== -->
+    <div class="flex-1 flex gap-3 p-3 overflow-hidden">
+
+      <!-- ============================================================ -->
+      <!-- 左侧边栏 (230px)：苹果瓷白风全息动态雷达 + 快捷分类导航 -->
+      <!-- ============================================================ -->
+      <aside class="w-56 shrink-0 apple-card-blur rounded-2xl p-3 flex flex-col justify-between overflow-hidden">
+        
+        <div class="space-y-3">
+          <!-- 苹果瓷白风全息雷达侦测 Canvas -->
+          <div class="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 flex flex-col items-center shadow-2xs">
+            
+            <div class="w-full flex items-center justify-between pb-1.5 border-b border-black/5 text-[11px] mb-1">
+              <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                <!-- SF Symbol 雷达波图标 -->
+                <svg class="w-3.5 h-3.5 text-[#0071e3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+                  <path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
+                </svg>
+                端口全息雷达
+              </span>
+              <span class="text-[10px] font-mono-num text-[#0071e3] bg-blue-50 px-1.5 py-0.2 rounded font-bold">60Hz</span>
+            </div>
+
+            <!-- 雷达 Canvas 容器 -->
+            <div class="relative w-36 h-36 my-1 flex items-center justify-center">
+              <canvas id="appleRadarCanvas" width="144" height="144" class="w-full h-full cursor-crosshair rounded-full"></canvas>
+              
+              <!-- 悬浮微卡片 -->
+              <div id="radarHoverTip" class="absolute pointer-events-none hidden px-2.5 py-1 rounded-lg bg-slate-900/90 text-white text-[10px] font-mono-num shadow-lg z-20 backdrop-blur-md">
+                <span id="tipPort" class="text-cyan-300 font-bold">:8080</span>
+                <span id="tipProc" class="block text-slate-300">node.exe</span>
+              </div>
+            </div>
+
+            <!-- 雷达图例说明 -->
+            <div class="w-full grid grid-cols-2 gap-1 pt-1.5 border-t border-black/5 text-[10px] text-center font-mono-num">
+              <span class="flex items-center justify-center gap-1 text-slate-600">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#0071e3]"></span>正常监听
+              </span>
+              <span class="flex items-center justify-center gap-1 text-rose-600 font-bold">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#ff3b30] animate-ping"></span>占用冲突
+              </span>
+            </div>
+
+          </div>
+
+          <!-- 分类标签胶囊栏 -->
+          <div class="space-y-1 text-xs">
+            <span class="text-[10px] font-bold text-slate-400 px-1 uppercase tracking-wider">常用筛选</span>
+            
+            <button data-cat="all" class="cat-nav-btn active w-full px-2.5 py-1.5 rounded-xl font-bold bg-[#0071e3] text-white flex items-center justify-between transition cursor-pointer">
+              <span>全部占用</span>
+              <span id="badgeTotalAll" class="text-[10px] font-mono-num opacity-90">14</span>
+            </button>
+
+            <button data-cat="web" class="cat-nav-btn w-full px-2.5 py-1.5 rounded-xl text-slate-600 hover:bg-black/5 font-medium flex items-center justify-between transition cursor-pointer">
+              <span>Web 常用 (80/3000/8080)</span>
+              <span class="text-[10px] font-mono-num text-slate-400">4</span>
+            </button>
+
+            <button data-cat="db" class="cat-nav-btn w-full px-2.5 py-1.5 rounded-xl text-slate-600 hover:bg-black/5 font-medium flex items-center justify-between transition cursor-pointer">
+              <span>数据库 (3306/6379/5432)</span>
+              <span class="text-[10px] font-mono-num text-slate-400">4</span>
+            </button>
+
+            <button data-cat="dev" class="cat-nav-btn w-full px-2.5 py-1.5 rounded-xl text-slate-600 hover:bg-black/5 font-medium flex items-center justify-between transition cursor-pointer">
+              <span>开发服务 (5173/8000/9000)</span>
+              <span class="text-[10px] font-mono-num text-slate-400">3</span>
+            </button>
+
+            <button data-cat="conflict" class="cat-nav-btn w-full px-2.5 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 font-bold flex items-center justify-between transition cursor-pointer">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3 h-3 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                冲突高危项
+              </span>
+              <span id="badgeConflict" class="text-[10px] font-mono-num bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full">2</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 底栏扫描按键 -->
+        <div class="pt-2 border-t border-black/5">
+          <button id="triggerDeepScanBtn" class="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-98">
+            <!-- SF Symbol 同步双向圆环箭头图标 -->
+            <svg id="scanSpinIcon" class="w-3.5 h-3.5 text-slate-600 transition-transform duration-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>重新探测端口</span>
+          </button>
+        </div>
+
+      </aside>
+
+      <!-- ============================================================ -->
+      <!-- 右侧主控台：顶部搜索控制栏（带搜索按键+Loading动效）+ 数据表 -->
+      <!-- ============================================================ -->
+      <main class="flex-1 apple-card-blur rounded-2xl p-3 flex flex-col justify-between overflow-hidden">
+        
+        <!-- 搜索控制栏 -->
+        <div class="flex items-center justify-between gap-3 mb-2.5 pb-2.5 border-b border-black/5 shrink-0">
+          
+          <!-- 搜索输入组合框 -->
+          <div class="flex items-center gap-1.5 flex-1 max-w-md">
+            <div class="relative flex-1">
+              <input 
+                id="searchKeywordInput" 
+                type="text" 
+                placeholder="输入端口号 (如 8080)、进程名 (node) 或 PID..." 
+                class="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200/90 rounded-xl text-xs font-mono-num text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/15 transition"
+              >
+              <!-- SF Symbol 搜索放大镜 -->
+              <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <button id="clearSearchInputBtn" class="hidden absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 text-xs font-mono-num">×</button>
+            </div>
+
+            <!-- 独立的“搜索”按钮 (带 Loading 交互动效) -->
+            <button id="executeSearchBtn" class="px-3.5 py-1.5 rounded-xl bg-[#0071e3] hover:bg-[#0062c4] text-white font-bold text-xs shadow-2xs active:scale-95 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+              <svg id="searchLoadingSpinner" class="hidden animate-spin w-3 h-3 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span id="searchBtnText">搜索</span>
+            </button>
+          </div>
+
+          <!-- 批量操作控制条 -->
+          <div class="flex items-center gap-2.5 text-xs">
+            <span class="text-slate-400 text-[11px]">已勾选: <strong id="selectedNumText" class="text-rose-600 font-mono-num font-bold">0</strong> 项</span>
+            <button id="batchKillActionBtn" disabled class="px-3.5 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer flex items-center gap-1 shadow-2xs">
+              <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                <line x1="12" y1="2" x2="12" y2="12"></line>
+              </svg>
+              <span>批量终结</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- 进程列表容器 (仅此容器支持内部滚动) -->
+        <div id="tableListWrapper" class="flex-1 overflow-y-auto list-scroll pr-1 relative transition-opacity duration-200">
+          
+          <table class="w-full text-left text-xs font-mono-num border-collapse">
+            <thead class="sticky top-0 bg-[#f8fafe]/95 backdrop-blur-md text-slate-400 text-[11px] border-b border-black/5 z-10">
+              <tr>
+                <th class="p-2 w-8 text-center">
+                  <input type="checkbox" id="selectAllCheckbox" class="rounded border-slate-300 text-[#0071e3] focus:ring-0 cursor-pointer">
+                </th>
+                <th class="p-2">端口</th>
+                <th class="p-2">协议</th>
+                <th class="p-2 font-sans">进程名称</th>
+                <th class="p-2">PID</th>
+                <th class="p-2">状态</th>
+                <th class="p-2">内存占用</th>
+                <th class="p-2 text-right pr-2 font-sans">强杀操作</th>
+              </tr>
+            </thead>
+            <tbody id="processRowsBody" class="divide-y divide-black/5">
+              <!-- 数据行动态填充 -->
+            </tbody>
+          </table>
+
+        </div>
+
+        <!-- 列表底栏摘要 -->
+        <div class="pt-2 border-t border-black/5 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+          <span id="footerCountSummary">就绪: 展示 14 / 共 14 个活跃端口</span>
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#0071e3]"></span>正常</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span>占用冲突</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400"></span>受保护核心</span>
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 原生底栏状态遥测栏 -->
+    <!-- ============================================================== -->
+    <footer class="h-6 px-3.5 border-t border-black/5 bg-white/40 flex items-center justify-between text-[10px] text-slate-400 shrink-0 font-mono-num">
+      <span class="flex items-center gap-1.5 font-sans">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span>Windows 原生内核嗅探驱动 (iphlpapi.dll) · 运行正常</span>
+      </span>
+      <span>Win32 Native Standalone EXE</span>
+    </footer>
+
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 苹果瓷白风格二次确认强杀模态窗 -->
+  <!-- ============================================================== -->
+  <div id="confirmKillModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/35 backdrop-blur-xs hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white/95 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-white text-slate-800 transform scale-95 transition-transform duration-200">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <h4 class="font-bold text-sm text-slate-900">强制解除端口占用？</h4>
+      </div>
+      
+      <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+        即将调用 Windows 底层 <code class="text-rose-600 font-bold font-mono-num">TerminateProcess</code> 强杀进程 <strong id="modalTargetName" class="text-slate-900">node.exe</strong> (PID: <span id="modalTargetPID" class="text-amber-600 font-mono-num font-bold">14220</span>)，端口 <strong id="modalTargetPort" class="text-[#0071e3] font-mono-num">8080</strong> 将被立即释放。
+      </p>
+
+      <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] font-mono-num text-slate-500 mb-4 break-all truncate" id="modalTargetPath">
+        C:\Program Files\nodejs\node.exe
+      </div>
+
+      <div class="flex justify-end gap-2 text-xs font-semibold">
+        <button id="modalCancelBtn" class="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer">
+          取消放弃
+        </button>
+        <button id="modalConfirmBtn" class="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition cursor-pointer shadow-sm active:scale-95 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>确认强杀</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示容器 -->
+  <div id="toastNotificationBox" class="fixed top-8 right-8 z-50 pointer-events-none flex flex-col gap-2"></div>
+
+  <!-- ============================================================== -->
+  <!-- 业务逻辑、全息雷达 Canvas 引擎与交互控制脚本 -->
+  <!-- ============================================================== -->
+  <script>
+    // 初始数据集
+    const initialProcessList = [
+      { id: 1, port: 8080, proto: 'TCP', name: 'node.exe', pid: 14220, state: 'LISTENING', mem: '342 MB', path: 'C:\\Program Files\\nodejs\\node.exe', cat: 'web', conflict: true, protected: false },
+      { id: 2, port: 3000, proto: 'TCP', name: 'next-server.exe', pid: 9812, state: 'LISTENING', mem: '215 MB', path: 'D:\\DEV\\frontend\\.next\\standalone\\server.exe', cat: 'web', conflict: true, protected: false },
+      { id: 3, port: 3306, proto: 'TCP', name: 'mysqld.exe', pid: 4520, state: 'LISTENING', mem: '680 MB', path: 'C:\\Program Files\\MySQL\\bin\\mysqld.exe', cat: 'db', conflict: false, protected: false },
+      { id: 4, port: 6379, proto: 'TCP', name: 'redis-server.exe', pid: 5124, state: 'LISTENING', mem: '45 MB', path: 'C:\\Redis\\redis-server.exe', cat: 'db', conflict: false, protected: false },
+      { id: 5, port: 5173, proto: 'TCP', name: 'vite.exe', pid: 18452, state: 'LISTENING', mem: '128 MB', path: 'C:\\Users\\Admin\\AppData\\npm\\vite.cmd', cat: 'dev', conflict: false, protected: false },
+      { id: 6, port: 80, proto: 'TCP', name: 'nginx.exe', pid: 2316, state: 'LISTENING', mem: '38 MB', path: 'D:\\env\\nginx-1.24\\nginx.exe', cat: 'web', conflict: false, protected: false },
+      { id: 7, port: 443, proto: 'TCP', name: 'nginx.exe', pid: 2316, state: 'LISTENING', mem: '38 MB', path: 'D:\\env\\nginx-1.24\\nginx.exe', cat: 'web', conflict: false, protected: false },
+      { id: 8, port: 5432, proto: 'TCP', name: 'postgres.exe', pid: 6188, state: 'LISTENING', mem: '185 MB', path: 'C:\\Program Files\\PostgreSQL\\bin\\postgres.exe', cat: 'db', conflict: false, protected: true },
+      { id: 9, port: 8000, proto: 'TCP', name: 'python.exe', pid: 21044, state: 'LISTENING', mem: '154 MB', path: 'C:\\Python311\\python.exe', cat: 'dev', conflict: false, protected: false },
+      { id: 10, port: 9000, proto: 'TCP', name: 'php-cgi.exe', pid: 8432, state: 'LISTENING', mem: '92 MB', path: 'D:\\php\\php-8.2\\php-cgi.exe', cat: 'dev', conflict: false, protected: false },
+      { id: 11, port: 27017, proto: 'TCP', name: 'mongod.exe', pid: 7210, state: 'LISTENING', mem: '410 MB', path: 'C:\\MongoDB\\bin\\mongod.exe', cat: 'db', conflict: false, protected: false },
+      { id: 12, port: 135, proto: 'TCP', name: 'svchost.exe', pid: 980, state: 'LISTENING', mem: '24 MB', path: 'C:\\Windows\\System32\\svchost.exe', cat: 'sys', conflict: false, protected: true },
+      { id: 13, port: 445, proto: 'TCP', name: 'System', pid: 4, state: 'LISTENING', mem: '12 MB', path: 'ntoskrnl.exe', cat: 'sys', conflict: false, protected: true },
+      { id: 14, port: 53, proto: 'UDP', name: 'dns.exe', pid: 1450, state: 'ESTABLISHED', mem: '18 MB', path: 'C:\\Windows\\System32\\dns.exe', cat: 'sys', conflict: false, protected: true }
+    ];
+
+    let dataset = [...initialProcessList];
+    let selectedSet = new Set();
+    let currentCategory = 'all';
+    let executedSearchKeyword = '';
+    let pendingKillTarget = null;
+    let isSoundActive = true;
+    let isSearching = false;
+
+    // Web Audio 触觉音效生成器
+    let audioContext = null;
+    function playAudio(type) {
+      if (!isSoundActive) return;
+      try {
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === 'suspended') audioContext.resume();
+        const now = audioContext.currentTime;
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        if (type === 'tick') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1000, now);
+          osc.frequency.exponentialRampToValueAtTime(600, now + 0.03);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+          osc.start(now); osc.stop(now + 0.03);
+        } else if (type === 'kill') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'scan') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(500, now);
+          osc.frequency.linearRampToValueAtTime(900, now + 0.12);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.start(now); osc.stop(now + 0.12);
+        }
+      } catch (e) {}
+    }
+
+    // ==========================================
+    // 苹果瓷白全息雷达 Canvas 引擎
+    // ==========================================
+    const radarCanvas = document.getElementById('appleRadarCanvas');
+    const radarCtx = radarCanvas.getContext('2d');
+    let radarRotation = 0;
+    let hoveredRadarBlip = null;
+
+    function renderAppleRadar() {
+      const w = radarCanvas.width;
+      const h = radarCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxR = w / 2 - 8;
+
+      radarCtx.clearRect(0, 0, w, h);
+
+      // 1. 底层瓷白圆盘与柔和阴影
+      radarCtx.beginPath();
+      radarCtx.arc(cx, cy, maxR, 0, Math.PI * 2);
+      radarCtx.fillStyle = '#f8fafd';
+      radarCtx.fill();
+
+      // 2. 瓷白同心细圆网格
+      [0.33, 0.66, 1.0].forEach((rRatio, idx) => {
+        radarCtx.beginPath();
+        radarCtx.arc(cx, cy, maxR * rRatio, 0, Math.PI * 2);
+        radarCtx.strokeStyle = idx === 2 ? 'rgba(0, 113, 227, 0.25)' : 'rgba(210, 220, 235, 0.6)';
+        radarCtx.lineWidth = 1;
+        radarCtx.stroke();
+      });
+
+      // 3. 极细十字准星线
+      radarCtx.beginPath();
+      radarCtx.moveTo(cx, cy - maxR); radarCtx.lineTo(cx, cy + maxR);
+      radarCtx.moveTo(cx - maxR, cy); radarCtx.lineTo(cx + maxR, cy);
+      radarCtx.strokeStyle = 'rgba(210, 220, 235, 0.5)';
+      radarCtx.lineWidth = 0.8;
+      radarCtx.stroke();
+
+      // 4. 旋转雷达光束 (Apple 瓷蓝柔光扇形)
+      radarCtx.save();
+      radarCtx.translate(cx, cy);
+      radarCtx.rotate(radarRotation);
+
+      const beamGrad = radarCtx.createRadialGradient(0, 0, 0, 0, 0, maxR);
+      beamGrad.addColorStop(0, 'rgba(0, 113, 227, 0)');
+      beamGrad.addColorStop(1, 'rgba(0, 113, 227, 0.22)');
+
+      radarCtx.beginPath();
+      radarCtx.moveTo(0, 0);
+      radarCtx.arc(0, 0, maxR, 0, Math.PI / 4, false);
+      radarCtx.closePath();
+      radarCtx.fillStyle = beamGrad;
+      radarCtx.fill();
+
+      // 扇形前缘扫射高亮线
+      radarCtx.beginPath();
+      radarCtx.moveTo(0, 0);
+      radarCtx.lineTo(maxR * Math.cos(Math.PI / 4), maxR * Math.sin(Math.PI / 4));
+      radarCtx.strokeStyle = 'rgba(0, 113, 227, 0.65)';
+      radarCtx.lineWidth = 1.5;
+      radarCtx.stroke();
+      radarCtx.restore();
+
+      radarRotation += 0.035;
+
+      // 5. 绘制端口节点 (Blips)
+      const currentList = getFilteredData();
+      currentList.forEach(item => {
+        const norm = Math.min(Math.max(item.port / 65535, 0.12), 0.92);
+        const r = maxR * Math.sqrt(norm);
+        const angle = (item.port * 137.5 * Math.PI) / 180;
+
+        const bx = cx + r * Math.cos(angle);
+        const by = cy + r * Math.sin(angle);
+        item._bx = bx;
+        item._by = by;
+
+        radarCtx.beginPath();
+        radarCtx.arc(bx, by, item.conflict ? 3.5 : 2.5, 0, Math.PI * 2);
+        radarCtx.fillStyle = item.conflict ? '#ff3b30' : '#0071e3';
+        radarCtx.shadowColor = item.conflict ? 'rgba(255, 59, 48, 0.5)' : 'rgba(0, 113, 227, 0.35)';
+        radarCtx.shadowBlur = 6;
+        radarCtx.fill();
+        radarCtx.shadowBlur = 0;
+      });
+
+      requestAnimationFrame(renderAppleRadar);
+    }
+    requestAnimationFrame(renderAppleRadar);
+
+    // 鼠标在雷达上的悬停与点击定位
+    radarCanvas.addEventListener('mousemove', (e) => {
+      const rect = radarCanvas.getBoundingClientRect();
+      const sx = radarCanvas.width / rect.width;
+      const sy = radarCanvas.height / rect.height;
+      const mx = (e.clientX - rect.left) * sx;
+      const my = (e.clientY - rect.top) * sy;
+
+      const list = getFilteredData();
+      let hit = null;
+      for (let item of list) {
+        if (item._bx && item._by && Math.hypot(mx - item._bx, my - item._by) < 8) {
+          hit = item;
+          break;
+        }
+      }
+
+      const tip = document.getElementById('radarHoverTip');
+      if (hit) {
+        hoveredRadarBlip = hit;
+        document.getElementById('tipPort').textContent = `:${hit.port}`;
+        document.getElementById('tipProc').textContent = `${hit.name} (${hit.pid})`;
+        tip.style.left = `${e.clientX - rect.left + 12}px`;
+        tip.style.top = `${e.clientY - rect.top - 8}px`;
+        tip.classList.remove('hidden');
+      } else {
+        hoveredRadarBlip = null;
+        tip.classList.add('hidden');
+      }
+    });
+
+    radarCanvas.addEventListener('mouseleave', () => {
+      document.getElementById('radarHoverTip').classList.add('hidden');
+    });
+
+    radarCanvas.addEventListener('click', () => {
+      if (hoveredRadarBlip) {
+        locateTableRow(hoveredRadarBlip.id);
+        playAudio('tick');
+      }
+    });
+
+    // ==========================================
+    // 数据过滤与表格渲染
+    // ==========================================
+    function getFilteredData() {
+      return dataset.filter(item => {
+        // 分类
+        if (currentCategory === 'web' && !['80', '443', '8080', '3000'].includes(item.port.toString())) return false;
+        if (currentCategory === 'db' && !['3306', '6379', '5432', '27017'].includes(item.port.toString())) return false;
+        if (currentCategory === 'dev' && !['5173', '8000', '9000'].includes(item.port.toString())) return false;
+        if (currentCategory === 'conflict' && !item.conflict) return false;
+
+        // 仅在执行了搜索时过滤
+        if (executedSearchKeyword.trim()) {
+          const q = executedSearchKeyword.toLowerCase().trim();
+          return item.port.toString().includes(q) ||
+                 item.name.toLowerCase().includes(q) ||
+                 item.pid.toString().includes(q);
+        }
+        return true;
+      });
+    }
+
+    function renderTableRows() {
+      const tbody = document.getElementById('processRowsBody');
+      const filtered = getFilteredData();
+      tbody.innerHTML = '';
+
+      document.getElementById('badgeTotalAll').textContent = dataset.length;
+      document.getElementById('badgeConflict').textContent = dataset.filter(d => d.conflict).length;
+      document.getElementById('footerCountSummary').textContent = `就绪: 展示 ${filtered.length} / 共 ${dataset.length} 个活跃端口`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="p-8 text-center text-slate-400 font-sans">
+              <svg class="w-8 h-8 mx-auto mb-2 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <p>未发现匹配的端口占用进程</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const isChecked = selectedSet.has(item.id);
+        const tr = document.createElement('tr');
+        tr.id = `row-proc-${item.id}`;
+        tr.className = `hover:bg-slate-100/70 transition-colors ${isChecked ? 'bg-blue-50/70' : ''}`;
+
+        tr.innerHTML = `
+          <td class="p-2 text-center">
+            <input type="checkbox" data-id="${item.id}" class="row-select-chk rounded border-slate-300 text-[#0071e3] focus:ring-0 cursor-pointer" ${isChecked ? 'checked' : ''}>
+          </td>
+          <td class="p-2 font-bold font-mono-num ${item.conflict ? 'text-rose-600' : 'text-[#0071e3]'}">:${item.port}</td>
+          <td class="p-2 text-slate-400 text-[10px] font-mono-num">${item.proto}</td>
+          <td class="p-2 font-semibold text-slate-800">
+            <div class="flex items-center gap-1.5">
+              <span>${item.name}</span>
+              ${item.conflict ? '<span class="text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded-full font-bold">冲突</span>' : ''}
+            </div>
+          </td>
+          <td class="p-2 text-amber-600 font-bold font-mono-num">${item.pid}</td>
+          <td class="p-2"><span class="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold font-mono-num">${item.state}</span></td>
+          <td class="p-2 text-slate-500 font-mono-num">${item.mem}</td>
+          <td class="p-2 text-right pr-2">
+            ${item.protected ? `
+              <span class="text-[10px] text-slate-400 px-2 py-0.5 rounded-full bg-slate-100 flex items-center gap-1 inline-flex">
+                <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                保护
+              </span>
+            ` : `
+              <button data-id="${item.id}" class="single-kill-btn px-2.5 py-0.5 rounded-full bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white text-[11px] font-bold border border-rose-200 transition cursor-pointer active:scale-95 flex items-center gap-1 inline-flex">
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                强杀
+              </button>
+            `}
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      // 绑定多选复选框
+      document.querySelectorAll('.row-select-chk').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const id = parseInt(e.target.dataset.id);
+          if (e.target.checked) selectedSet.add(id);
+          else selectedSet.delete(id);
+          updateSelectionState();
+        });
+      });
+
+      // 绑定单条强杀
+      document.querySelectorAll('.single-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.id);
+          const t = dataset.find(d => d.id === id);
+          if (t) promptKillModal(t);
+        });
+      });
+
+      updateSelectionState();
+    }
+
+    function updateSelectionState() {
+      const count = selectedSet.size;
+      document.getElementById('selectedNumText').textContent = count;
+      document.getElementById('batchKillActionBtn').disabled = count === 0;
+      const filtered = getFilteredData();
+      document.getElementById('selectAllCheckbox').checked = filtered.length > 0 && filtered.every(f => selectedSet.has(f.id));
+    }
+
+    function locateTableRow(id) {
+      const row = document.getElementById(`row-proc-${id}`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        row.style.backgroundColor = 'rgba(0, 113, 227, 0.18)';
+        setTimeout(() => row.style.backgroundColor = '', 1200);
+      }
+    }
+
+    // ==========================================
+    // 搜索执行与 Loading 动效机制
+    // ==========================================
+    function triggerSearchProcess() {
+      if (isSearching) return;
+      isSearching = true;
+
+      const inputVal = document.getElementById('searchKeywordInput').value;
+      const spinner = document.getElementById('searchLoadingSpinner');
+      const btnText = document.getElementById('searchBtnText');
+      const tableWrapper = document.getElementById('tableListWrapper');
+
+      // 激活 Loading 状态
+      spinner.classList.remove('hidden');
+      btnText.textContent = '检索中';
+      tableWrapper.style.opacity = '0.4';
+      playAudio('tick');
+
+      // 模拟微秒级扫描过渡动效 (320ms)
+      setTimeout(() => {
+        executedSearchKeyword = inputVal;
+        renderTableRows();
+
+        // 还原状态
+        spinner.classList.add('hidden');
+        btnText.textContent = '搜索';
+        tableWrapper.style.opacity = '1';
+        isSearching = false;
+
+        if (inputVal.trim()) {
+          showToast(`已按 "${inputVal}" 完成过滤`);
+        }
+      }, 320);
+    }
+
+    // 搜索按钮点击与回车响应
+    document.getElementById('executeSearchBtn').addEventListener('click', triggerSearchProcess);
+    document.getElementById('searchKeywordInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') triggerSearchProcess();
+    });
+
+    // 监听输入展示清空按钮
+    const kwInput = document.getElementById('searchKeywordInput');
+    const clearBtn = document.getElementById('clearSearchInputBtn');
+    kwInput.addEventListener('input', () => {
+      if (kwInput.value) clearBtn.classList.remove('hidden');
+      else clearBtn.classList.add('hidden');
+    });
+
+    clearBtn.addEventListener('click', () => {
+      kwInput.value = '';
+      clearBtn.classList.add('hidden');
+      executedSearchKeyword = '';
+      renderTableRows();
+      showToast('已重置搜索关键词');
+    });
+
+    // 分类胶囊切换 (立即生效)
+    document.querySelectorAll('.cat-nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        playAudio('tick');
+        document.querySelectorAll('.cat-nav-btn').forEach(b => {
+          b.className = 'cat-nav-btn w-full px-2.5 py-1.5 rounded-xl text-slate-600 hover:bg-black/5 font-medium flex items-center justify-between transition cursor-pointer';
+        });
+        btn.className = 'cat-nav-btn active w-full px-2.5 py-1.5 rounded-xl font-bold bg-[#0071e3] text-white flex items-center justify-between transition cursor-pointer';
+        currentCategory = btn.dataset.cat;
+        renderTableRows();
+      });
+    });
+
+    // 全选复选框
+    document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
+      playAudio('tick');
+      const filtered = getFilteredData();
+      if (e.target.checked) filtered.forEach(f => selectedSet.add(f.id));
+      else filtered.forEach(f => selectedSet.delete(f.id));
+      renderTableRows();
+    });
+
+    // ==========================================
+    // 进程强杀弹窗与终结执行
+    // ==========================================
+    function promptKillModal(target) {
+      pendingKillTarget = target;
+      document.getElementById('modalTargetName').textContent = target.name;
+      document.getElementById('modalTargetPID').textContent = target.pid;
+      document.getElementById('modalTargetPort').textContent = `:${target.port}`;
+      document.getElementById('modalTargetPath').textContent = target.path;
+
+      const modal = document.getElementById('confirmKillModal');
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+      playAudio('tick');
+    }
+
+    function closeKillModal() {
+      const modal = document.getElementById('confirmKillModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        pendingKillTarget = null;
+      }, 200);
+    }
+
+    document.getElementById('modalCancelBtn').addEventListener('click', closeKillModal);
+    document.getElementById('modalConfirmBtn').addEventListener('click', () => {
+      if (pendingKillTarget) {
+        const t = pendingKillTarget;
+        closeKillModal();
+        playAudio('kill');
+
+        // 行淡出动画
+        const row = document.getElementById(`row-proc-${t.id}`);
+        if (row) row.classList.add('row-kill-anim');
+
+        // 调用原生强杀
+        if (window.goKillProcess) {
+          window.goKillProcess(t.pid);
+        }
+
+        setTimeout(() => {
+          dataset = dataset.filter(d => d.id !== t.id);
+          selectedSet.delete(t.id);
+          renderTableRows();
+          showToast(`进程 ${t.name} (PID: ${t.pid}) 强杀成功，端口 :${t.port} 已释放`);
+        }, 400);
+      }
+    });
+
+    // 批量强杀
+    document.getElementById('batchKillActionBtn').addEventListener('click', () => {
+      const targets = dataset.filter(d => selectedSet.has(d.id) && !d.protected);
+      if (targets.length === 0) return;
+      if (!confirm(`确定一次性终结选中的 ${targets.length} 个进程吗？`)) return;
+
+      playAudio('kill');
+      targets.forEach(t => {
+        if (window.goKillProcess) window.goKillProcess(t.pid);
+      });
+
+      dataset = dataset.filter(d => !selectedSet.has(d.id) || d.protected);
+      selectedSet.clear();
+      renderTableRows();
+      showToast(`成功批量释放 ${targets.length} 个端口占用`);
+    });
+
+    // 模拟新占用注入
+    document.getElementById('mockInjectBtn').addEventListener('click', () => {
+      const p = [8088, 3001, 7070, 9999, 4200][Math.floor(Math.random() * 5)];
+      const pid = Math.floor(1000 + Math.random() * 80000);
+      const mock = {
+        id: Date.now(),
+        port: p,
+        proto: 'TCP',
+        name: 'mock_server.exe',
+        pid: pid,
+        state: 'LISTENING',
+        mem: '120 MB',
+        path: `D:\\dev\\mock\\port_${p}.exe`,
+        cat: 'dev',
+        conflict: true,
+        protected: false
+      };
+      dataset.unshift(mock);
+      playAudio('tick');
+      renderTableRows();
+      showToast(`探测到新进程抢占端口 :${p}`);
+    });
+
+    // 重新探测端口
+    document.getElementById('triggerDeepScanBtn').addEventListener('click', () => {
+      playAudio('scan');
+      const icon = document.getElementById('scanSpinIcon');
+      icon.classList.add('rotate-180');
+      setTimeout(() => icon.classList.remove('rotate-180'), 700);
+
+      loadNativePorts();
+      showToast('端口表已校准为当前最新');
+    });
+
+    // 触觉音效开关
+    document.getElementById('soundToggleBtn').addEventListener('click', () => {
+      isSoundActive = !isSoundActive;
+      document.getElementById('soundTxt').textContent = isSoundActive ? '触觉音效' : '已静音';
+      document.getElementById('soundIconSvg').style.opacity = isSoundActive ? '1' : '0.4';
+    });
+
+    // Toast 组件
+    function showToast(text) {
+      const box = document.getElementById('toastNotificationBox');
+      const t = document.createElement('div');
+      t.className = 'px-3.5 py-2.5 rounded-xl bg-slate-900/90 text-white text-xs font-semibold shadow-xl backdrop-blur-md flex items-center gap-2 transform translate-x-4 opacity-0 transition-all duration-300';
+      t.innerHTML = `
+        <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>${text}</span>
+      `;
+      box.appendChild(t);
+      setTimeout(() => t.classList.remove('translate-x-4', 'opacity-0'), 10);
+      setTimeout(() => {
+        t.classList.add('translate-x-4', 'opacity-0');
+        setTimeout(() => t.remove(), 300);
+      }, 3000);
+    }
+
+    // ==========================================
+    // Go 桌面端原生通信桥梁 (IPC)
+    // ==========================================
+    async function loadNativePorts() {
+      if (window.goQueryPorts) {
+        try {
+          const res = await window.goQueryPorts();
+          const list = JSON.parse(res);
+          if (Array.isArray(list) && list.length > 0) {
+            dataset = list;
+            renderTableRows();
+          }
+        } catch (e) {
+          console.error("IPC Query Error:", e);
+        }
+      }
+    }
+
+    // 窗口控制桥梁
+    document.getElementById('winMinBtn').addEventListener('click', () => {
+      if (window.goMinimizeWindow) window.goMinimizeWindow();
+      else showToast('最小化至 Windows 任务栏');
+    });
+    document.getElementById('winMaxBtn').addEventListener('click', () => {
+      if (window.goMaximizeWindow) window.goMaximizeWindow();
+      else showToast('切换窗口最大化/还原');
+    });
+    document.getElementById('winCloseBtn').addEventListener('click', () => {
+      if (window.goCloseWindow) window.goCloseWindow();
+      else showToast('安全退出程序');
+    });
+
+    // 原生窗口拖拽移动与双击最大化
+    const bar = document.getElementById('winTitlebar');
+    bar.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button, input, select, a, svg, path')) return;
+      if (e.button === 0 && window.goDragWindow) {
+        window.goDragWindow();
+      }
+    });
+    bar.addEventListener('dblclick', (e) => {
+      if (e.target.closest('button, input, select, a')) return;
+      if (window.goMaximizeWindow) {
+        window.goMaximizeWindow();
+      }
+    });
+
+    // 初始化渲染并尝试拉取真实数据
+    renderTableRows();
+    loadNativePorts();
+  </script>
+</body>
+</html>

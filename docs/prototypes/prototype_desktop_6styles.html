@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PortKiller Pro - 桌面单体 EXE 6重异构交互原型系统</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* 严格限定桌面 EXE 窗口体验：外层禁止任何滚动条 */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* 苹果级平滑缓动 */
+    :root {
+      --spring: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 内部精细滚动条 */
+    .app-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .app-scroll::-webkit-scrollbar-track { background: transparent; }
+    .app-scroll::-webkit-scrollbar-thumb { background: rgba(120, 130, 150, 0.25); border-radius: 9999px; }
+    .app-scroll::-webkit-scrollbar-thumb:hover { background: rgba(120, 130, 150, 0.45); }
+
+    /* 风格 1: 苹果瓷白液态玻璃 */
+    .theme-apple-studio {
+      --win-bg: #f2f5fa;
+      --panel-bg: rgba(255, 255, 255, 0.75);
+      --panel-border: rgba(255, 255, 255, 0.9);
+      --text-main: #1d1d1f;
+      --text-sub: #86868b;
+      --accent: #0071e3;
+    }
+
+    /* 风格 2: VisionOS 空间晨曦悬浮 */
+    .theme-vision-aurora {
+      --win-bg: linear-gradient(135deg, #e9effd 0%, #f7f1fc 100%);
+      --panel-bg: rgba(255, 255, 255, 0.55);
+      --panel-border: rgba(255, 255, 255, 0.85);
+      --text-main: #191c26;
+      --text-sub: #7a8299;
+      --accent: #0284c7;
+    }
+
+    /* 风格 3: 赛博朋克深空 OLED */
+    .theme-cyber-oled {
+      --win-bg: #060913;
+      --panel-bg: rgba(11, 19, 38, 0.85);
+      --panel-border: #1a2c4e;
+      --text-main: #f1f5f9;
+      --text-sub: #64748b;
+      --accent: #00f5d4;
+    }
+
+    /* 风格 4: 纯白光子机甲 */
+    .theme-photon-mecha {
+      --win-bg: #e5e8ef;
+      --panel-bg: #ffffff;
+      --panel-border: #cbd5e1;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --accent: #ff6b00;
+    }
+
+    /* 风格 5: 极速新丑风 */
+    .theme-neo-brutal {
+      --win-bg: #fcf6e8;
+      --panel-bg: #ffffff;
+      --panel-border: #121212;
+      --text-main: #121212;
+      --text-sub: #525252;
+      --accent: #ffe600;
+    }
+
+    /* 风格 6: 黑曜石瑞士极简 */
+    .theme-swiss-obsidian {
+      --win-bg: #0f1115;
+      --panel-bg: #181a20;
+      --panel-border: #262932;
+      --text-main: #f3f4f6;
+      --text-sub: #717684;
+      --accent: #d4af37;
+    }
+
+    /* 新丑风立体阴影 */
+    .neo-shadow {
+      box-shadow: 4px 4px 0 #121212;
+    }
+    .neo-shadow-sm {
+      box-shadow: 2.5px 2.5px 0 #121212;
+    }
+
+    /* 机甲切角 */
+    .mecha-cut {
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    }
+
+    /* 盖章销毁动效 */
+    @keyframes stamp-explode {
+      0% { transform: scale(2.5) rotate(-20deg); opacity: 0; }
+      50% { transform: scale(0.95) rotate(-10deg); opacity: 1; }
+      100% { transform: scale(1) rotate(-10deg); opacity: 1; }
+    }
+    .stamp-anim { animation: stamp-explode 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards; }
+  </style>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen p-2 md:p-4 font-sans select-none antialiased">
+
+  <!-- 桌面 EXE 外壳窗口容器 (固定尺寸：920px × 650px，严禁外层滚动，逼真模拟 Windows 单文件原生应用) -->
+  <div id="desktopWindowShell" class="w-[920px] h-[650px] rounded-2xl shadow-2xl flex flex-col relative overflow-hidden transition-all duration-500 border border-black/20 bg-slate-100">
+
+    <!-- ============================================================== -->
+    <!-- 原生窗口标题栏 (Windows / macOS 窗体拖拽模拟与全局风格切换) -->
+    <!-- ============================================================== -->
+    <div id="winTitlebar" class="h-10 px-3.5 flex items-center justify-between border-b shrink-0 text-xs transition-colors duration-300">
+      
+      <!-- 左侧：窗口控制器与应用标题 -->
+      <div class="flex items-center gap-3">
+        <!-- 交通灯 / Windows 最小化关闭按钮 -->
+        <div id="trafficLights" class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e] flex items-center justify-center text-[7px] text-transparent hover:text-black/70 cursor-pointer font-bold">×</span>
+          <span class="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123] flex items-center justify-center text-[7px] text-transparent hover:text-black/70 cursor-pointer font-bold">-</span>
+          <span class="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29] flex items-center justify-center text-[7px] text-transparent hover:text-black/70 cursor-pointer font-bold">+</span>
+        </div>
+        <div class="flex items-center gap-1.5 font-bold">
+          <span id="appLogoEmoji">⚡</span>
+          <span id="appWinTitle" class="tracking-wide">PortKiller Pro</span>
+          <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-normal opacity-60">exe · x64</span>
+        </div>
+      </div>
+
+      <!-- 中间：6 种异构桌面风格快速选择器 (核心切换) -->
+      <div class="flex items-center gap-1 p-0.5 rounded-lg bg-black/5 border border-black/5">
+        <button data-style="1" class="style-tab-btn active px-2 py-0.5 rounded text-[11px] font-bold bg-white shadow-xs cursor-pointer transition">1.苹果瓷白</button>
+        <button data-style="2" class="style-tab-btn px-2 py-0.5 rounded text-[11px] font-medium hover:bg-white/50 cursor-pointer transition">2.空间灵动</button>
+        <button data-style="3" class="style-tab-btn px-2 py-0.5 rounded text-[11px] font-medium hover:bg-white/50 cursor-pointer transition">3.赛博深空</button>
+        <button data-style="4" class="style-tab-btn px-2 py-0.5 rounded text-[11px] font-medium hover:bg-white/50 cursor-pointer transition">4.光子机甲</button>
+        <button data-style="5" class="style-tab-btn px-2 py-0.5 rounded text-[11px] font-medium hover:bg-white/50 cursor-pointer transition">5.新丑看板</button>
+        <button data-style="6" class="style-tab-btn px-2 py-0.5 rounded text-[11px] font-medium hover:bg-white/50 cursor-pointer transition">6.黑曜极简</button>
+      </div>
+
+      <!-- 右侧：音效与模拟注入控制 -->
+      <div class="flex items-center gap-2">
+        <button id="toggleAudioBtn" class="text-[11px] opacity-75 hover:opacity-100 flex items-center gap-1 cursor-pointer">
+          <span id="audioIco">🔊</span>
+          <span id="audioTxt">音效</span>
+        </button>
+        <button id="quickMockBtn" class="text-[10px] px-1.5 py-0.5 rounded border border-black/10 hover:bg-black/5 font-semibold cursor-pointer">
+          + 注入占用
+        </button>
+        <span class="w-2 h-2 rounded-full bg-emerald-500" title="管理员特权正常"></span>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 桌面视窗核心内容区 (6套完全异构的布局形态，无任何外层滚动条) -->
+    <!-- ============================================================== -->
+    <div id="desktopContentArea" class="flex-1 overflow-hidden relative p-3">
+
+      <!-- ============================================================ -->
+      <!-- 风格 1：🍎 苹果瓷白侧边栏流 (Left Sidebar + Right Table) -->
+      <!-- ============================================================ -->
+      <div id="viewStyle1" class="w-full h-full flex gap-3">
+        <!-- 左侧固定边栏 (220px) -->
+        <div class="w-56 shrink-0 rounded-xl bg-white/70 border border-white/90 p-3 flex flex-col justify-between shadow-sm backdrop-blur-md">
+          <div class="space-y-3">
+            <!-- 苹果健康同心环 Canvas (缩小版桌面控件) -->
+            <div class="flex flex-col items-center p-2 rounded-lg bg-black/3">
+              <span class="text-[11px] font-bold text-slate-700 mb-1">健康与占用负荷</span>
+              <div class="w-28 h-28 relative flex items-center justify-center">
+                <canvas id="s1Canvas" width="112" height="112" class="w-full h-full"></canvas>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span class="text-xl font-black text-slate-900" id="s1TotalPorts">14</span>
+                  <span class="text-[9px] text-slate-400 font-semibold">PORT BUSY</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 分类导航胶囊 -->
+            <div class="space-y-1 text-xs">
+              <button data-cat="all" class="s1-cat-btn active w-full px-2.5 py-1.5 rounded-lg font-bold bg-[#0071e3] text-white flex items-center justify-between transition cursor-pointer">
+                <span>全部占用</span><span id="s1CatCountAll" class="text-[10px] opacity-80 font-mono">14</span>
+              </button>
+              <button data-cat="web" class="s1-cat-btn w-full px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-black/5 font-medium flex items-center justify-between transition cursor-pointer">
+                <span>Web 常用 (80/3000/8080)</span><span class="text-[10px] opacity-60 font-mono">4</span>
+              </button>
+              <button data-cat="db" class="s1-cat-btn w-full px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-black/5 font-medium flex items-center justify-between transition cursor-pointer">
+                <span>数据库 (3306/6379/5432)</span><span class="text-[10px] opacity-60 font-mono">4</span>
+              </button>
+              <button data-cat="conflict" class="s1-cat-btn w-full px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 font-bold flex items-center justify-between transition cursor-pointer">
+                <span>⚠️ 冲突待杀</span><span id="s1ConflictCount" class="text-[10px] font-mono bg-rose-100 text-rose-700 px-1 rounded">2</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 提权状态提示与刷新 -->
+          <div class="pt-2 border-t border-black/5 space-y-2">
+            <button id="s1RescanBtn" class="w-full py-1.5 rounded-lg bg-black/5 hover:bg-black/10 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer">
+              <span>🔄 重新扫描</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 右侧主数据表格 (仅此列表内部滚动) -->
+        <div class="flex-1 rounded-xl bg-white/70 border border-white/90 p-3 flex flex-col justify-between shadow-sm backdrop-blur-md overflow-hidden">
+          <!-- 搜索条与批量控制 -->
+          <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-black/5 shrink-0">
+            <div class="relative flex-1 max-w-sm">
+              <input id="s1SearchInput" type="text" placeholder="快速过滤端口 (8080)、进程名 (node) 或 PID..." class="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:border-[#0071e3]">
+              <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-slate-400 text-[11px]">选中: <strong id="s1SelectedCount" class="text-rose-600 font-mono">0</strong></span>
+              <button id="s1BatchKillBtn" disabled class="px-3 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer">
+                批量强杀
+              </button>
+            </div>
+          </div>
+
+          <!-- 进程列表 (可垂直滚动) -->
+          <div class="flex-1 overflow-y-auto app-scroll pr-1">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="sticky top-0 bg-white/90 backdrop-blur-md text-slate-400 text-[11px] border-b border-black/5 z-10">
+                <tr>
+                  <th class="p-2 w-8 text-center"><input type="checkbox" id="s1CheckAll" class="rounded cursor-pointer"></th>
+                  <th class="p-2">端口</th>
+                  <th class="p-2">协议</th>
+                  <th class="p-2">进程名称</th>
+                  <th class="p-2">PID</th>
+                  <th class="p-2">内存</th>
+                  <th class="p-2 text-right pr-2">强杀操作</th>
+                </tr>
+              </thead>
+              <tbody id="s1TableBody" class="divide-y divide-black/5"></tbody>
+            </table>
+          </div>
+
+          <!-- 底部摘要 -->
+          <div class="pt-2 border-t border-black/5 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+            <span id="s1FooterSummary">就绪: 14 个活跃端口</span>
+            <span>Windows TerminateProcess API</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 风格 2：🥽 VisionOS 空间悬浮动态胶囊 (Island + Split 3D Orbit) -->
+      <!-- ============================================================ -->
+      <div id="viewStyle2" class="w-full h-full hidden flex flex-col gap-2.5">
+        <!-- 顶部灵动岛胶囊 (Dynamic Island) -->
+        <div id="s2Island" class="mx-auto px-5 py-1.5 rounded-full bg-white/70 border border-white/90 shadow-md backdrop-blur-lg flex items-center gap-3 shrink-0 transition-all duration-300">
+          <span class="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse"></span>
+          <span class="text-xs font-bold text-slate-800" id="s2IslandTxt">空间感知核心在线</span>
+          <span class="text-slate-300 text-xs">|</span>
+          <span class="text-[11px] font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold" id="s2IslandBadge">14 端口已锚定</span>
+        </div>
+
+        <!-- 中部左右对称：左侧 3D 全息球 + 右侧空间卡片流 -->
+        <div class="flex-1 flex gap-3 overflow-hidden">
+          <!-- 左侧：3D 量子全息球 (Canvas) -->
+          <div class="w-72 shrink-0 rounded-2xl bg-white/60 border border-white/80 p-3 flex flex-col items-center justify-between shadow-sm backdrop-blur-md">
+            <div class="w-full flex justify-between items-center text-[11px] font-bold text-slate-700">
+              <span>3D SPATIAL QUANTUM</span>
+              <span class="text-cyan-600 font-mono">ORBIT VIEW</span>
+            </div>
+            <div class="w-48 h-48 relative flex items-center justify-center my-auto">
+              <canvas id="s2Canvas" width="192" height="192" class="w-full h-full rounded-full cursor-grab"></canvas>
+            </div>
+            <div class="text-[11px] text-slate-400 text-center">红色节点表示冲突端口</div>
+          </div>
+
+          <!-- 右侧：进程折叠卡片列表 (内部滚动) -->
+          <div class="flex-1 rounded-2xl bg-white/60 border border-white/80 p-3 flex flex-col shadow-sm backdrop-blur-md overflow-hidden">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-black/5 shrink-0">
+              <span class="text-xs font-bold text-slate-800">进程空间拓扑</span>
+              <input id="s2SearchInput" type="text" placeholder="过滤节点..." class="px-2 py-1 bg-white/80 border border-slate-200 rounded text-xs font-mono w-44">
+            </div>
+            <div id="s2CardContainer" class="flex-1 overflow-y-auto app-scroll space-y-2 pr-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 风格 3：🛸 赛博深空战术 HUD (Radar Header + Dense Matrix) -->
+      <!-- ============================================================ -->
+      <div id="viewStyle3" class="w-full h-full hidden flex flex-col gap-2.5 text-slate-100">
+        <!-- 顶部 HUD 探测条 (Canvas 战术雷达 + 关键遥测卡) -->
+        <div class="h-32 shrink-0 rounded-xl bg-[#0b1326] border border-[#1e2f52] p-2.5 flex items-center justify-between gap-4">
+          <!-- 左侧雷达扫射 Canvas -->
+          <div class="flex items-center gap-3">
+            <div class="w-24 h-24 relative flex items-center justify-center">
+              <canvas id="s3Canvas" width="96" height="96" class="w-full h-full rounded-full"></canvas>
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-sm font-black tracking-widest text-[#00f5d4] uppercase">TACTICAL PORT SCANNER</h3>
+              <p class="text-[11px] text-slate-400 font-mono">SWEEP: 0-65535 · AF_INET OWNER_PID</p>
+              <div class="flex items-center gap-2 text-[10px] font-mono">
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
+                <span class="text-slate-500">|</span>
+                <span class="text-amber-400">ADMIN ELEVATED</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧统计仪表卡 -->
+          <div class="flex items-center gap-3 pr-2">
+            <div class="px-3 py-1.5 rounded bg-slate-900 border border-slate-800 text-center font-mono">
+              <span class="text-[10px] text-slate-400 block">LISTEN</span>
+              <strong class="text-base text-[#00f5d4]" id="s3ListenVal">12</strong>
+            </div>
+            <div class="px-3 py-1.5 rounded bg-slate-900 border border-slate-800 text-center font-mono">
+              <span class="text-[10px] text-slate-400 block">CONFLICT</span>
+              <strong class="text-base text-[#ff2a6d]" id="s3ConflictVal">2</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- 下部：紧凑深空表格 (内部滚动) -->
+        <div class="flex-1 rounded-xl bg-[#0b1326] border border-[#1e2f52] p-2.5 flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between pb-2 mb-1 border-b border-slate-800 shrink-0">
+            <input id="s3SearchInput" type="text" placeholder="FILTER TARGET PORT / PROCESS..." class="w-64 px-2 py-1 bg-black/50 border border-slate-700 text-xs font-mono text-cyan-300 rounded focus:border-[#00f5d4]">
+            <button id="s3KillConflictsBtn" class="px-3 py-1 rounded bg-[#ff2a6d]/20 hover:bg-[#ff2a6d] border border-[#ff2a6d] text-[#ff2a6d] hover:text-white text-xs font-bold font-mono transition cursor-pointer">
+              ⚡ 终止所有冲突项
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto app-scroll">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="sticky top-0 bg-[#070d1d] text-slate-400 text-[10px] uppercase border-b border-slate-800 z-10">
+                <tr>
+                  <th class="p-2">PORT</th>
+                  <th class="p-2">PROTO</th>
+                  <th class="p-2">PROCESS</th>
+                  <th class="p-2">PID</th>
+                  <th class="p-2">MEM</th>
+                  <th class="p-2 text-right">KILL</th>
+                </tr>
+              </thead>
+              <tbody id="s3TableBody" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 风格 4：⚡ 纯白光子机甲实验室 (Oscilloscope Header + Terminal) -->
+      <!-- ============================================================ -->
+      <div id="viewStyle4" class="w-full h-full hidden flex flex-col gap-2.5 text-slate-900">
+        <!-- 顶部：0-65535 频谱示波器 Canvas -->
+        <div class="h-20 shrink-0 rounded-lg bg-white border-2 border-slate-300 p-2 flex flex-col justify-between">
+          <div class="flex justify-between items-center text-[10px] font-black font-mono text-slate-600">
+            <span>PORT SPECTRUM OSCILLOSCOPE [0-65535]</span>
+            <span class="text-[#ff6b00]">60Hz FREQUENCY SWEEP</span>
+          </div>
+          <div class="h-10 w-full relative">
+            <canvas id="s4Canvas" class="w-full h-full"></canvas>
+          </div>
+        </div>
+
+        <!-- 下半段：左表 + 右控制台终端 -->
+        <div class="flex-1 flex gap-2.5 overflow-hidden">
+          <!-- 左栏：数据表 (内部滚动) -->
+          <div class="flex-1 rounded-lg bg-white border-2 border-slate-300 p-2 flex flex-col overflow-hidden">
+            <div class="pb-1.5 mb-1 border-b border-slate-200 flex justify-between items-center shrink-0">
+              <span class="text-xs font-black">SOCKET DATASET</span>
+              <input id="s4SearchInput" type="text" placeholder="FILTER..." class="px-2 py-0.5 bg-slate-100 border border-slate-300 text-xs font-mono rounded w-36">
+            </div>
+            <div class="flex-1 overflow-y-auto app-scroll">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="sticky top-0 bg-slate-100 text-slate-500 text-[10px] uppercase border-b border-slate-200">
+                  <tr>
+                    <th class="p-1.5">PORT</th>
+                    <th class="p-1.5">PROC</th>
+                    <th class="p-1.5">PID</th>
+                    <th class="p-1.5 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="s4TableBody" class="divide-y divide-slate-200"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 右栏：实时内核指令日志终端 (Terminal) -->
+          <div class="w-72 shrink-0 rounded-lg bg-slate-950 text-emerald-400 p-2.5 border-2 border-slate-800 font-mono text-[11px] flex flex-col justify-between">
+            <div class="pb-1 border-b border-slate-800 flex justify-between text-slate-400 text-[10px]">
+              <span>KERNEL HOOK LOG</span>
+              <span class="text-emerald-400">WIN32 OK</span>
+            </div>
+            <div id="s4LogBox" class="flex-1 overflow-y-auto app-scroll my-1 space-y-1 text-[10px] text-slate-300">
+              <div><span class="text-slate-500">[00:01]</span> Hook iphlpapi.dll -> TCP table read.</div>
+              <div><span class="text-slate-500">[00:01]</span> Discovered 14 active sockets.</div>
+            </div>
+            <div class="pt-1 border-t border-slate-800 text-[9px] text-slate-500">
+              SE_DEBUG_PRIVILEGE GRANTED
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 风格 5：🎨 极速新丑风活力大看板 (Four-Column Kanban Board) -->
+      <!-- ============================================================ -->
+      <div id="viewStyle5" class="w-full h-full hidden flex flex-col gap-2.5">
+        <!-- 看板条幅 -->
+        <div class="h-10 shrink-0 px-3 py-1 rounded bg-[#ffe600] border-2 border-black neo-shadow-sm flex items-center justify-between text-xs font-black">
+          <span>⚡ PORT KILLER KANBAN 看板流</span>
+          <span class="bg-white border border-black px-2 py-0.5 text-[10px]">各列独立滚动 · 盖章强杀</span>
+        </div>
+
+        <!-- 4 列等宽看板 (每列内部独立滚动，外部无滚动) -->
+        <div class="flex-1 grid grid-cols-4 gap-2.5 overflow-hidden">
+          <!-- 列 1: 冲突项 -->
+          <div class="rounded bg-rose-50 border-2 border-black p-2 flex flex-col overflow-hidden neo-shadow-sm">
+            <div class="flex justify-between items-center pb-1 border-b-2 border-black font-black text-xs text-rose-700 shrink-0">
+              <span>⚠️ 占用冲突</span><span id="s5CountConflict" class="bg-rose-200 px-1 border border-black">2</span>
+            </div>
+            <div id="s5ColConflict" class="flex-1 overflow-y-auto app-scroll space-y-2 pt-2 pr-0.5"></div>
+          </div>
+
+          <!-- 列 2: Web 监听 -->
+          <div class="rounded bg-blue-50 border-2 border-black p-2 flex flex-col overflow-hidden neo-shadow-sm">
+            <div class="flex justify-between items-center pb-1 border-b-2 border-black font-black text-xs text-blue-700 shrink-0">
+              <span>🌐 Web 监听</span><span id="s5CountWeb" class="bg-blue-200 px-1 border border-black">5</span>
+            </div>
+            <div id="s5ColWeb" class="flex-1 overflow-y-auto app-scroll space-y-2 pt-2 pr-0.5"></div>
+          </div>
+
+          <!-- 列 3: 数据库与服务 -->
+          <div class="rounded bg-emerald-50 border-2 border-black p-2 flex flex-col overflow-hidden neo-shadow-sm">
+            <div class="flex justify-between items-center pb-1 border-b-2 border-black font-black text-xs text-emerald-700 shrink-0">
+              <span>🗄️ 数据库组件</span><span id="s5CountDb" class="bg-emerald-200 px-1 border border-black">4</span>
+            </div>
+            <div id="s5ColDb" class="flex-1 overflow-y-auto app-scroll space-y-2 pt-2 pr-0.5"></div>
+          </div>
+
+          <!-- 列 4: 守护白名单 -->
+          <div class="rounded bg-slate-100 border-2 border-black p-2 flex flex-col overflow-hidden neo-shadow-sm">
+            <div class="flex justify-between items-center pb-1 border-b-2 border-black font-black text-xs text-slate-700 shrink-0">
+              <span>🛡️ 系统保护</span><span id="s5CountSys" class="bg-slate-200 px-1 border border-black">3</span>
+            </div>
+            <div id="s5ColSys" class="flex-1 overflow-y-auto app-scroll space-y-2 pt-2 pr-0.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 风格 6：💎 黑曜石瑞士极简检查器 (Raycast/Linear Split Inspector) -->
+      <!-- ============================================================ -->
+      <div id="viewStyle6" class="w-full h-full hidden flex flex-col gap-2.5 text-slate-200">
+        <!-- 顶部全局指令栏 (Spotlight / Raycast Bar) -->
+        <div class="h-10 shrink-0 px-3 rounded-lg bg-[#181a20] border border-[#262932] flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 flex-1">
+            <span class="text-amber-500 font-bold">⌘</span>
+            <input id="s6SearchInput" type="text" placeholder="键入指令或端口号检索 (8080, node, kill)..." class="bg-transparent text-xs text-white focus:outline-none w-full font-mono">
+          </div>
+          <span class="text-[10px] text-slate-500 font-mono">ESC 清空 · ENTER 强杀</span>
+        </div>
+
+        <!-- 中部两栏：左侧极简主列表 + 右侧详情检查器 (Inspector) -->
+        <div class="flex-1 flex gap-2.5 overflow-hidden">
+          <!-- 左栏：列表 (内部滚动) -->
+          <div class="flex-1 rounded-lg bg-[#181a20] border border-[#262932] p-2 flex flex-col overflow-hidden">
+            <div class="flex-1 overflow-y-auto app-scroll pr-1">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="sticky top-0 bg-[#181a20] text-slate-500 text-[10px] border-b border-[#262932]">
+                  <tr>
+                    <th class="p-2">PORT</th>
+                    <th class="p-2">PROCESS</th>
+                    <th class="p-2">PID</th>
+                    <th class="p-2 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="s6TableBody" class="divide-y divide-[#262932]"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 右栏：极简详情检查器 (Inspector Card) -->
+          <div id="s6InspectorCard" class="w-64 shrink-0 rounded-lg bg-[#181a20] border border-[#262932] p-3 flex flex-col justify-between text-xs font-mono">
+            <div>
+              <div class="pb-2 border-b border-[#262932] mb-3 flex justify-between items-center">
+                <span class="text-slate-400 text-[11px]">INSPECTOR</span>
+                <span class="text-amber-400 font-bold" id="s6InspState">LISTENING</span>
+              </div>
+              <div class="space-y-2 text-[11px]">
+                <div><span class="text-slate-500 block">PORT:</span><strong class="text-lg text-amber-400" id="s6InspPort">:8080</strong></div>
+                <div><span class="text-slate-500 block">PROCESS:</span><strong class="text-slate-200" id="s6InspName">node.exe</strong></div>
+                <div><span class="text-slate-500 block">PID:</span><span class="text-slate-300" id="s6InspPID">14220</span></div>
+                <div><span class="text-slate-500 block">PATH:</span><div class="text-[10px] text-slate-400 break-all p-1 bg-black/40 rounded mt-0.5" id="s6InspThumb">C:\Program Files\nodejs\node.exe</div></div>
+              </div>
+            </div>
+
+            <button id="s6InspKillBtn" class="w-full py-2 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow transition cursor-pointer">
+              💥 终结选中进程 (DEL)
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 底部状态栏 -->
+    <div id="winFooter" class="h-6 px-3 border-t flex items-center justify-between text-[10px] text-slate-400 shrink-0 font-mono transition-colors duration-300">
+      <span id="footerStatusLeft">KERNEL HOOK: OK | UAC: ADMIN</span>
+      <span id="footerStatusRight">PortKiller Win32 Standalone EXE</span>
+    </div>
+
+  </div>
+
+  <!-- 二次确认强杀通用模态窗 -->
+  <div id="desktopModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white text-slate-900 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 transform scale-95 transition-transform duration-200">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xl">⚠️</span>
+        <h4 class="font-bold text-sm">强制解除端口占用？</h4>
+      </div>
+      <p class="text-xs text-slate-600 mb-3 font-sans">
+        即将终止进程 <strong id="mProcName">node.exe</strong> (PID: <span id="mProcPID">14220</span>)，端口 <strong id="mProcPort">:8080</strong> 将被立即释放。
+      </p>
+      <div class="flex justify-end gap-2 text-xs font-semibold">
+        <button id="mCancelBtn" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer">取消</button>
+        <button id="mConfirmBtn" class="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-sm">立即强杀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮动 Toast 提示 -->
+  <div id="appToastBox" class="fixed top-8 right-8 z-50 pointer-events-none flex flex-col gap-2"></div>
+
+  <!-- ============================================================== -->
+  <!-- 核心逻辑与 6 套异构视图渲染控制 -->
+  <!-- ============================================================== -->
+  <script>
+    // 基础进程数据集
+    const initialData = [
+      { id: 1, port: 8080, proto: 'TCP', name: 'node.exe', pid: 14220, state: 'LISTENING', mem: '342 MB', path: 'C:\\Program Files\\nodejs\\node.exe', cat: 'web', conflict: true, protected: false },
+      { id: 2, port: 3000, proto: 'TCP', name: 'next-server.exe', pid: 9812, state: 'LISTENING', mem: '215 MB', path: 'D:\\DEV\\frontend\\.next\\standalone\\server.exe', cat: 'web', conflict: true, protected: false },
+      { id: 3, port: 3306, proto: 'TCP', name: 'mysqld.exe', pid: 4520, state: 'LISTENING', mem: '680 MB', path: 'C:\\Program Files\\MySQL\\bin\\mysqld.exe', cat: 'db', conflict: false, protected: false },
+      { id: 4, port: 6379, proto: 'TCP', name: 'redis-server.exe', pid: 5124, state: 'LISTENING', mem: '45 MB', path: 'C:\\Redis\\redis-server.exe', cat: 'db', conflict: false, protected: false },
+      { id: 5, port: 5173, proto: 'TCP', name: 'vite.exe', pid: 18452, state: 'LISTENING', mem: '128 MB', path: 'C:\\Users\\Admin\\AppData\\npm\\vite.cmd', cat: 'dev', conflict: false, protected: false },
+      { id: 6, port: 80, proto: 'TCP', name: 'nginx.exe', pid: 2316, state: 'LISTENING', mem: '38 MB', path: 'D:\\env\\nginx-1.24\\nginx.exe', cat: 'web', conflict: false, protected: false },
+      { id: 7, port: 443, proto: 'TCP', name: 'nginx.exe', pid: 2316, state: 'LISTENING', mem: '38 MB', path: 'D:\\env\\nginx-1.24\\nginx.exe', cat: 'web', conflict: false, protected: false },
+      { id: 8, port: 5432, proto: 'TCP', name: 'postgres.exe', pid: 6188, state: 'LISTENING', mem: '185 MB', path: 'C:\\Program Files\\PostgreSQL\\bin\\postgres.exe', cat: 'db', conflict: false, protected: true },
+      { id: 9, port: 8000, proto: 'TCP', name: 'python.exe', pid: 21044, state: 'LISTENING', mem: '154 MB', path: 'C:\\Python311\\python.exe', cat: 'dev', conflict: false, protected: false },
+      { id: 10, port: 9000, proto: 'TCP', name: 'php-cgi.exe', pid: 8432, state: 'LISTENING', mem: '92 MB', path: 'D:\\php\\php-8.2\\php-cgi.exe', cat: 'dev', conflict: false, protected: false },
+      { id: 11, port: 27017, proto: 'TCP', name: 'mongod.exe', pid: 7210, state: 'LISTENING', mem: '410 MB', path: 'C:\\MongoDB\\bin\\mongod.exe', cat: 'db', conflict: false, protected: false },
+      { id: 12, port: 135, proto: 'TCP', name: 'svchost.exe', pid: 980, state: 'LISTENING', mem: '24 MB', path: 'C:\\Windows\\System32\\svchost.exe', cat: 'sys', conflict: false, protected: true },
+      { id: 13, port: 445, proto: 'TCP', name: 'System', pid: 4, state: 'LISTENING', mem: '12 MB', path: 'ntoskrnl.exe', cat: 'sys', conflict: false, protected: true },
+      { id: 14, port: 53, proto: 'UDP', name: 'dns.exe', pid: 1450, state: 'ESTABLISHED', mem: '18 MB', path: 'C:\\Windows\\System32\\dns.exe', cat: 'sys', conflict: false, protected: true }
+    ];
+
+    let portsData = [...initialData];
+    let activeStyle = 1;
+    let s1Cat = 'all';
+    let s1Search = '';
+    let selectedS1 = new Set();
+    let killTarget = null;
+    let s6InspectTarget = portsData[0];
+    let audioOn = true;
+
+    // Web Audio 音效
+    let audioCtx = null;
+    function playBeep(type) {
+      if (!audioOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'tick') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1000, now);
+          osc.frequency.exponentialRampToValueAtTime(600, now + 0.03);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+          osc.start(now); osc.stop(now + 0.03);
+        } else if (type === 'kill') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now); osc.stop(now + 0.25);
+        }
+      } catch (e) {}
+    }
+
+    // 切换 6 种完全不同的桌面视窗风格
+    function switchDesktopStyle(styleNum) {
+      activeStyle = styleNum;
+      const shell = document.getElementById('desktopWindowShell');
+      const titlebar = document.getElementById('winTitlebar');
+      const footer = document.getElementById('winFooter');
+
+      // 更新按钮
+      document.querySelectorAll('.style-tab-btn').forEach(btn => {
+        if (parseInt(btn.dataset.style) === styleNum) {
+          btn.className = 'style-tab-btn active px-2 py-0.5 rounded text-[11px] font-bold bg-white shadow-xs cursor-pointer transition';
+        } else {
+          btn.className = 'style-tab-btn px-2 py-0.5 rounded text-[11px] font-medium hover:bg-white/50 cursor-pointer transition';
+        }
+      });
+
+      // 切换视图面板
+      for (let i = 1; i <= 6; i++) {
+        const v = document.getElementById(`viewStyle${i}`);
+        if (i === styleNum) v.classList.remove('hidden');
+        else v.classList.add('hidden');
+      }
+
+      // 重设窗口外壳样式
+      shell.className = shell.className.replace(/bg-[\w-]+|border-[\w-]+/g, '');
+      if (styleNum === 1) {
+        shell.style.backgroundColor = '#f2f5fa';
+        titlebar.style.borderColor = 'rgba(0,0,0,0.06)';
+        titlebar.style.color = '#1d1d1f';
+        footer.style.color = '#86868b';
+      } else if (styleNum === 2) {
+        shell.style.background = 'linear-gradient(135deg, #eaf0fb 0%, #f6f0fb 100%)';
+        titlebar.style.borderColor = 'rgba(0,0,0,0.06)';
+        titlebar.style.color = '#191c26';
+      } else if (styleNum === 3) {
+        shell.style.backgroundColor = '#070a14';
+        titlebar.style.borderColor = '#1a2c4e';
+        titlebar.style.color = '#f1f5f9';
+        footer.style.color = '#64748b';
+      } else if (styleNum === 4) {
+        shell.style.backgroundColor = '#e5e8ef';
+        titlebar.style.borderColor = '#cbd5e1';
+        titlebar.style.color = '#0f172a';
+      } else if (styleNum === 5) {
+        shell.style.backgroundColor = '#fcf6e8';
+        titlebar.style.borderColor = '#121212';
+        titlebar.style.color = '#121212';
+      } else if (styleNum === 6) {
+        shell.style.backgroundColor = '#0f1115';
+        titlebar.style.borderColor = '#262932';
+        titlebar.style.color = '#f3f4f6';
+        footer.style.color = '#717684';
+      }
+
+      playBeep('tick');
+      renderCurrentStyle();
+    }
+
+    document.querySelectorAll('.style-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchDesktopStyle(parseInt(btn.dataset.style)));
+    });
+
+    // ==========================================
+    // 渲染视图 1: 苹果瓷白侧边栏
+    // ==========================================
+    function renderStyle1() {
+      const tbody = document.getElementById('s1TableBody');
+      tbody.innerHTML = '';
+
+      let list = portsData.filter(d => {
+        if (s1Cat === 'web' && !['80', '443', '8080', '3000'].includes(d.port.toString())) return false;
+        if (s1Cat === 'db' && !['3306', '6379', '5432', '27017'].includes(d.port.toString())) return false;
+        if (s1Cat === 'conflict' && !d.conflict) return false;
+        if (s1Search.trim()) {
+          const q = s1Search.toLowerCase().trim();
+          return d.port.toString().includes(q) || d.name.toLowerCase().includes(q) || d.pid.toString().includes(q);
+        }
+        return true;
+      });
+
+      document.getElementById('s1TotalPorts').textContent = portsData.length;
+      document.getElementById('s1ConflictCount').textContent = portsData.filter(p => p.conflict).length;
+      document.getElementById('s1FooterSummary').textContent = `显示 ${list.length} / 共 ${portsData.length} 个端口`;
+
+      list.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-black/3 transition';
+        const isChecked = selectedS1.has(item.id);
+
+        tr.innerHTML = `
+          <td class="p-2 text-center"><input type="checkbox" data-id="${item.id}" class="s1-row-chk rounded cursor-pointer" ${isChecked ? 'checked' : ''}></td>
+          <td class="p-2 font-bold ${item.conflict ? 'text-rose-600' : 'text-[#0071e3]'}">:${item.port}</td>
+          <td class="p-2 text-slate-400 text-[10px]">${item.proto}</td>
+          <td class="p-2 font-semibold text-slate-800">${item.name}</td>
+          <td class="p-2 text-amber-600">${item.pid}</td>
+          <td class="p-2 text-slate-500">${item.mem}</td>
+          <td class="p-2 text-right pr-2">
+            ${item.protected ? '<span class="text-slate-400 text-[10px]">保护</span>' : `
+              <button data-id="${item.id}" class="s1-kill-btn px-2 py-0.5 rounded bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white text-[11px] font-bold border border-rose-200 transition cursor-pointer">
+                强杀
+              </button>
+            `}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 绑定复选与强杀
+      document.querySelectorAll('.s1-row-chk').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const id = parseInt(e.target.dataset.id);
+          if (e.target.checked) selectedS1.add(id);
+          else selectedS1.delete(id);
+          document.getElementById('s1SelectedCount').textContent = selectedS1.size;
+          document.getElementById('s1BatchKillBtn').disabled = selectedS1.size === 0;
+        });
+      });
+
+      document.querySelectorAll('.s1-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.id);
+          const t = portsData.find(d => d.id === id);
+          if (t) promptKill(t);
+        });
+      });
+
+      drawS1Canvas();
+    }
+
+    // Canvas 1: 苹果同心健康环
+    function drawS1Canvas() {
+      const cvs = document.getElementById('s1Canvas');
+      const ctx = cvs.getContext('2d');
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+      const cx = cvs.width / 2;
+      const cy = cvs.height / 2;
+
+      // 外环: 健康率
+      ctx.beginPath(); ctx.arc(cx, cy, 45, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 6; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 45, -Math.PI / 2, Math.PI * 1.3);
+      ctx.strokeStyle = '#34c759'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+
+      // 内环: 冲突率
+      ctx.beginPath(); ctx.arc(cx, cy, 34, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 0.5);
+      ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+    }
+
+    // ==========================================
+    // 渲染视图 2: VisionOS 空间动态胶囊
+    // ==========================================
+    function renderStyle2() {
+      const box = document.getElementById('s2CardContainer');
+      box.innerHTML = '';
+
+      portsData.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-xl bg-white/70 border border-white hover:bg-white shadow-xs flex items-center justify-between transition';
+        card.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${item.conflict ? 'bg-rose-500 animate-ping' : 'bg-cyan-500'}"></span>
+            <div>
+              <div class="font-bold text-xs text-slate-800">${item.name} <span class="text-slate-400 font-mono text-[10px]">PID: ${item.pid}</span></div>
+              <div class="text-[10px] text-slate-400 font-mono truncate max-w-xs">${item.path}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="font-mono font-bold text-xs ${item.conflict ? 'text-rose-600' : 'text-blue-600'}">:${item.port}</span>
+            ${item.protected ? '<span class="text-[10px] text-slate-400">守护</span>' : `
+              <button data-id="${item.id}" class="s2-kill-btn px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white text-[10px] font-bold border border-rose-200 transition cursor-pointer">
+                终结
+              </button>
+            `}
+          </div>
+        `;
+        box.appendChild(card);
+      });
+
+      document.querySelectorAll('.s2-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = portsData.find(d => d.id === parseInt(btn.dataset.id));
+          if (t) promptKill(t);
+        });
+      });
+    }
+
+    // Canvas 2: 3D 浮动全息球
+    let s2SphereAngle = 0;
+    function drawS2Canvas() {
+      if (activeStyle === 2) {
+        const cvs = document.getElementById('s2Canvas');
+        const ctx = cvs.getContext('2d');
+        const cx = cvs.width / 2;
+        const cy = cvs.height / 2;
+        const R = 75;
+
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+        // 经纬圈
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(2, 132, 199, 0.2)'; ctx.lineWidth = 1; ctx.stroke();
+
+        portsData.forEach((d, i) => {
+          const theta = (i / portsData.length) * Math.PI * 2 + s2SphereAngle;
+          const phi = i * 0.75;
+          const x3d = R * Math.sin(phi) * Math.cos(theta);
+          const y3d = R * Math.sin(phi) * Math.sin(theta);
+          const z3d = R * Math.cos(phi);
+
+          const scale = 160 / (160 + z3d);
+          const px = cx + x3d * scale;
+          const py = cy + y3d * scale;
+
+          ctx.beginPath();
+          ctx.arc(px, py, d.conflict ? 3.5 : 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = d.conflict ? '#ff3b30' : '#0284c7';
+          ctx.fill();
+        });
+
+        s2SphereAngle += 0.01;
+      }
+      requestAnimationFrame(drawS2Canvas);
+    }
+    requestAnimationFrame(drawS2Canvas);
+
+    // ==========================================
+    // 渲染视图 3: 赛博深空战术 HUD
+    // ==========================================
+    function renderStyle3() {
+      const tbody = document.getElementById('s3TableBody');
+      tbody.innerHTML = '';
+
+      document.getElementById('s3ListenVal').textContent = portsData.filter(d => d.state === 'LISTENING').length;
+      document.getElementById('s3ConflictVal').textContent = portsData.filter(d => d.conflict).length;
+
+      portsData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/60 transition';
+        tr.innerHTML = `
+          <td class="p-2 font-bold ${item.conflict ? 'text-[#ff2a6d]' : 'text-[#00f5d4]'}">:${item.port}</td>
+          <td class="p-2 text-slate-400 text-[10px]">${item.proto}</td>
+          <td class="p-2 text-slate-200 font-semibold">${item.name}</td>
+          <td class="p-2 text-amber-400">${item.pid}</td>
+          <td class="p-2 text-slate-400">${item.mem}</td>
+          <td class="p-2 text-right">
+            ${item.protected ? '<span class="text-slate-500 text-[10px]">LOCK</span>' : `
+              <button data-id="${item.id}" class="s3-kill-btn px-2 py-0.5 rounded bg-rose-500/10 hover:bg-[#ff2a6d] border border-rose-500/30 text-[#ff2a6d] hover:text-white text-[10px] font-bold cursor-pointer transition">
+                KILL
+              </button>
+            `}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.s3-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = portsData.find(d => d.id === parseInt(btn.dataset.id));
+          if (t) promptKill(t);
+        });
+      });
+    }
+
+    // Canvas 3: 战术毫米波雷达
+    let s3RadarAngle = 0;
+    function drawS3Canvas() {
+      if (activeStyle === 3) {
+        const cvs = document.getElementById('s3Canvas');
+        const ctx = cvs.getContext('2d');
+        const cx = cvs.width / 2;
+        const cy = cvs.height / 2;
+        const R = 42;
+
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+        // 同心圆
+        [0.4, 0.7, 1.0].forEach(r => {
+          ctx.beginPath(); ctx.arc(cx, cy, R * r, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0, 245, 212, 0.25)'; ctx.stroke();
+        });
+
+        // 旋转指针
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(s3RadarAngle);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(R, 0);
+        ctx.strokeStyle = '#00f5d4'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.restore();
+
+        // 节点
+        portsData.forEach(d => {
+          const r = R * Math.sqrt(d.port / 65535);
+          const a = (d.port * 137.5 * Math.PI) / 180;
+          ctx.beginPath();
+          ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 2, 0, Math.PI * 2);
+          ctx.fillStyle = d.conflict ? '#ff2a6d' : '#00f5d4';
+          ctx.fill();
+        });
+
+        s3RadarAngle += 0.04;
+      }
+      requestAnimationFrame(drawS3Canvas);
+    }
+    requestAnimationFrame(drawS3Canvas);
+
+    // ==========================================
+    // 渲染视图 4: 纯白光子机甲
+    // ==========================================
+    function renderStyle4() {
+      const tbody = document.getElementById('s4TableBody');
+      tbody.innerHTML = '';
+
+      portsData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        tr.innerHTML = `
+          <td class="p-1.5 font-bold ${item.conflict ? 'text-rose-600' : 'text-[#ff6b00]'}">:${item.port}</td>
+          <td class="p-1.5 font-semibold text-slate-800">${item.name}</td>
+          <td class="p-1.5 text-amber-600">${item.pid}</td>
+          <td class="p-1.5 text-right">
+            ${item.protected ? '<span class="text-slate-400 text-[10px]">SYS</span>' : `
+              <button data-id="${item.id}" class="s4-kill-btn px-2 py-0.5 bg-rose-500 hover:bg-rose-600 text-white font-black text-[10px] cursor-pointer">
+                KILL
+              </button>
+            `}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.s4-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = portsData.find(d => d.id === parseInt(btn.dataset.id));
+          if (t) promptKill(t);
+        });
+      });
+    }
+
+    // Canvas 4: 示波器波形
+    let s4Tick = 0;
+    function drawS4Canvas() {
+      if (activeStyle === 4) {
+        const cvs = document.getElementById('s4Canvas');
+        if (cvs.clientWidth) cvs.width = cvs.clientWidth;
+        const ctx = cvs.getContext('2d');
+        const w = cvs.width;
+        const h = cvs.height;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.beginPath();
+        ctx.moveTo(0, h / 2);
+        for (let x = 0; x < w; x += 4) {
+          let y = Math.sin(x * 0.05 + s4Tick) * 4;
+          portsData.forEach(p => {
+            const px = (p.port / 65535) * w;
+            if (Math.abs(x - px) < 8) y += p.conflict ? -12 : 8;
+          });
+          ctx.lineTo(x, h / 2 + y);
+        }
+        ctx.strokeStyle = '#ff6b00';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        s4Tick += 0.05;
+      }
+      requestAnimationFrame(drawS4Canvas);
+    }
+    requestAnimationFrame(drawS4Canvas);
+
+    // ==========================================
+    // 渲染视图 5: 极速新丑风看板
+    // ==========================================
+    function renderStyle5() {
+      const cols = {
+        conflict: document.getElementById('s5ColConflict'),
+        web: document.getElementById('s5ColWeb'),
+        db: document.getElementById('s5ColDb'),
+        sys: document.getElementById('s5ColSys')
+      };
+      Object.values(cols).forEach(c => c.innerHTML = '');
+
+      function makeCard(d) {
+        const c = document.createElement('div');
+        c.className = `p-2 rounded bg-white border border-black neo-shadow-sm flex flex-col gap-1 text-xs`;
+        c.innerHTML = `
+          <div class="flex justify-between items-center font-black">
+            <span class="truncate max-w-[80px]">${d.name}</span>
+            <span class="${d.conflict ? 'text-rose-600' : 'text-blue-600'}">:${d.port}</span>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono">PID: ${d.pid}</div>
+          <div class="flex justify-end pt-1 border-t border-slate-100">
+            ${d.protected ? '<span class="text-[9px] text-slate-400 font-bold">受护</span>' : `
+              <button data-id="${d.id}" class="s5-kill-btn px-2 py-0.5 bg-rose-500 hover:bg-rose-600 text-white font-black text-[10px] border border-black cursor-pointer">
+                KILL 印章
+              </button>
+            `}
+          </div>
+        `;
+        return c;
+      }
+
+      portsData.filter(d => d.conflict).forEach(d => cols.conflict.appendChild(makeCard(d)));
+      portsData.filter(d => !d.conflict && !d.protected && (d.cat === 'web' || d.cat === 'dev')).forEach(d => cols.web.appendChild(makeCard(d)));
+      portsData.filter(d => !d.conflict && !d.protected && d.cat === 'db').forEach(d => cols.db.appendChild(makeCard(d)));
+      portsData.filter(d => d.protected).forEach(d => cols.sys.appendChild(makeCard(d)));
+
+      document.querySelectorAll('.s5-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = portsData.find(d => d.id === parseInt(btn.dataset.id));
+          if (t) promptKill(t);
+        });
+      });
+    }
+
+    // ==========================================
+    // 渲染视图 6: 黑曜石瑞士极简检查器
+    // ==========================================
+    function renderStyle6() {
+      const tbody = document.getElementById('s6TableBody');
+      tbody.innerHTML = '';
+
+      portsData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-[#20222a] transition cursor-pointer ${s6InspectTarget && s6InspectTarget.id === item.id ? 'bg-[#20222a]' : ''}`;
+        tr.innerHTML = `
+          <td class="p-2 font-bold ${item.conflict ? 'text-rose-500' : 'text-amber-400'}">:${item.port}</td>
+          <td class="p-2 text-slate-200 font-semibold">${item.name}</td>
+          <td class="p-2 text-slate-400">${item.pid}</td>
+          <td class="p-2 text-right">
+            ${item.protected ? '<span class="text-slate-600 text-[10px]">SYS</span>' : `
+              <button data-id="${item.id}" class="s6-kill-btn px-2 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white text-[10px] font-bold cursor-pointer">
+                DEL
+              </button>
+            `}
+          </td>
+        `;
+        tr.addEventListener('click', () => {
+          s6InspectTarget = item;
+          updateS6Inspector();
+          renderStyle6();
+        });
+        tbody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.s6-kill-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const t = portsData.find(d => d.id === parseInt(btn.dataset.id));
+          if (t) promptKill(t);
+        });
+      });
+
+      updateS6Inspector();
+    }
+
+    function updateS6Inspector() {
+      if (!s6InspectTarget) return;
+      document.getElementById('s6InspPort').textContent = `:${s6InspectTarget.port}`;
+      document.getElementById('s6InspName').textContent = s6InspectTarget.name;
+      document.getElementById('s6InspPID').textContent = s6InspectTarget.pid;
+      document.getElementById('s6InspState').textContent = s6InspectTarget.state;
+      document.getElementById('s6InspThumb').textContent = s6InspectTarget.path;
+      document.getElementById('s6InspKillBtn').disabled = s6InspectTarget.protected;
+    }
+
+    document.getElementById('s6InspKillBtn').addEventListener('click', () => {
+      if (s6InspectTarget && !s6InspectTarget.protected) promptKill(s6InspectTarget);
+    });
+
+    // ==========================================
+    // 通用强杀弹窗与终结执行
+    // ==========================================
+    function promptKill(target) {
+      killTarget = target;
+      document.getElementById('mProcName').textContent = target.name;
+      document.getElementById('mProcPID').textContent = target.pid;
+      document.getElementById('mProcPort').textContent = `:${target.port}`;
+
+      const m = document.getElementById('desktopModal');
+      m.classList.remove('hidden');
+      setTimeout(() => m.classList.remove('opacity-0'), 10);
+      playBeep('tick');
+    }
+
+    function closeKillModal() {
+      const m = document.getElementById('desktopModal');
+      m.classList.add('opacity-0');
+      setTimeout(() => {
+        m.classList.add('hidden');
+        killTarget = null;
+      }, 200);
+    }
+
+    document.getElementById('mCancelBtn').addEventListener('click', closeKillModal);
+    document.getElementById('mConfirmBtn').addEventListener('click', () => {
+      if (killTarget) {
+        const t = killTarget;
+        closeKillModal();
+        playBeep('kill');
+
+        // 执行销毁
+        portsData = portsData.filter(d => d.id !== t.id);
+        selectedS1.delete(t.id);
+        if (s6InspectTarget && s6InspectTarget.id === t.id) s6InspectTarget = portsData[0];
+
+        // 记入日志
+        const box = document.getElementById('s4LogBox');
+        const div = document.createElement('div');
+        div.innerHTML = `<span class="text-rose-400">[KILL]</span> TerminateProcess PID ${t.pid} -> :${t.port} RELEASED`;
+        box.appendChild(div);
+
+        renderCurrentStyle();
+        showToast(`💥 进程 ${t.name} (PID: ${t.pid}) 已强杀，端口 :${t.port} 释放成功！`);
+      }
+    });
+
+    function showToast(msg) {
+      const box = document.getElementById('appToastBox');
+      const t = document.createElement('div');
+      t.className = 'px-3 py-2 rounded-xl bg-slate-900/90 text-white border border-slate-700 text-xs shadow-2xl backdrop-blur-md flex items-center gap-2 transform translate-x-4 opacity-0 transition-all duration-300';
+      t.innerHTML = `<span>🎯</span><span>${msg}</span>`;
+      box.appendChild(t);
+      setTimeout(() => t.classList.remove('translate-x-4', 'opacity-0'), 10);
+      setTimeout(() => {
+        t.classList.add('translate-x-4', 'opacity-0');
+        setTimeout(() => t.remove(), 300);
+      }, 2800);
+    }
+
+    // 快捷分类筛选 (Style 1)
+    document.querySelectorAll('.s1-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.s1-cat-btn').forEach(b => {
+          b.className = 's1-cat-btn w-full px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-black/5 font-medium flex items-center justify-between transition cursor-pointer';
+        });
+        btn.className = 's1-cat-btn active w-full px-2.5 py-1.5 rounded-lg font-bold bg-[#0071e3] text-white flex items-center justify-between transition cursor-pointer';
+        s1Cat = btn.dataset.cat;
+        renderStyle1();
+      });
+    });
+
+    // 搜索输入过滤
+    document.getElementById('s1SearchInput').addEventListener('input', (e) => {
+      s1Search = e.target.value;
+      renderStyle1();
+    });
+
+    // 注入新占用
+    document.getElementById('quickMockBtn').addEventListener('click', () => {
+      const mockPort = [8088, 3001, 7070, 9999, 4200][Math.floor(Math.random() * 5)];
+      const mockPid = Math.floor(1000 + Math.random() * 80000);
+      const mock = {
+        id: Date.now(),
+        port: mockPort,
+        proto: 'TCP',
+        name: 'mock_server.exe',
+        pid: mockPid,
+        state: 'LISTENING',
+        mem: '120 MB',
+        path: `D:\\dev\\mock\\port_${mockPort}.exe`,
+        cat: 'dev',
+        conflict: true,
+        protected: false
+      };
+      portsData.unshift(mock);
+      playBeep('tick');
+      renderCurrentStyle();
+      showToast(`⚠️ 探测到新进程抢占端口 :${mockPort}`);
+    });
+
+    // 音效开关
+    document.getElementById('toggleAudioBtn').addEventListener('click', () => {
+      audioOn = !audioOn;
+      document.getElementById('audioIco').textContent = audioOn ? '🔊' : '🔇';
+      document.getElementById('audioTxt').textContent = audioOn ? '音效' : '静音';
+    });
+
+    function renderCurrentStyle() {
+      if (activeStyle === 1) renderStyle1();
+      else if (activeStyle === 2) renderStyle2();
+      else if (activeStyle === 3) renderStyle3();
+      else if (activeStyle === 4) renderStyle4();
+      else if (activeStyle === 5) renderStyle5();
+      else if (activeStyle === 6) renderStyle6();
+    }
+
+    // 初始化渲染
+    switchDesktopStyle(1);
+  </script>
+</body>
+</html>

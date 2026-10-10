@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PortKiller Pro - 全形态异构交互原型系统</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* 苹果级平滑弹簧曲线 */
+    :root {
+      --spring: cubic-bezier(0.16, 1, 0.3, 1);
+      --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* 布局平滑切换过渡 */
+    .layout-stage {
+      transition: opacity 0.3s ease, transform 0.4s var(--spring);
+    }
+
+    /* 样式 1: 苹果瓷白液态毛玻璃 (Apple Ceramic Light) */
+    .apple-light-bg {
+      background: radial-gradient(circle at 10% 20%, #f3f6fc 0%, #e8edf7 90%);
+      color: #1d1d1f;
+    }
+    .apple-bento-card {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(35px) saturate(180%);
+      -webkit-backdrop-filter: blur(35px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 12px 36px -6px rgba(130, 150, 185, 0.18), 0 2px 8px -2px rgba(130, 150, 185, 0.08);
+      transition: all 0.35s var(--spring);
+    }
+    .apple-bento-card:hover {
+      box-shadow: 0 18px 45px -4px rgba(100, 130, 180, 0.25);
+      transform: translateY(-2px);
+    }
+
+    /* 样式 2: 晨曦极光 VisionOS 空间双翼 (VisionOS Aurora Daylight) */
+    .vision-light-bg {
+      background: linear-gradient(135deg, #eef2fa 0%, #f7f3fb 50%, #eff7f6 100%);
+      color: #1a1e28;
+    }
+    .vision-floating-glass {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(40px) saturate(200%);
+      -webkit-backdrop-filter: blur(40px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 25px 60px rgba(105, 120, 160, 0.2), inset 0 1.5px 2px rgba(255, 255, 255, 0.9);
+    }
+
+    /* 样式 3: 纯白光子机甲战术控制台 (Photon Mecha White) */
+    .mecha-light-bg {
+      background: #eaecf1;
+      color: #0f172a;
+    }
+    .mecha-panel {
+      background: #ffffff;
+      border: 2px solid #cbd5e1;
+      box-shadow: 0 8px 0 #94a3b8;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    .mecha-cut-btn {
+      clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+    }
+
+    /* 样式 4: 极速新丑风活力大看板 (Neobrutalism Kanban) */
+    .neo-bg {
+      background: #fbf7ee;
+      color: #121212;
+    }
+    .neo-card {
+      background: #ffffff;
+      border: 2.5px solid #121212;
+      box-shadow: 5px 5px 0 #121212;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .neo-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 7px 7px 0 #121212;
+    }
+    .neo-card:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0 #121212;
+    }
+
+    /* 盖章销毁印章动画 */
+    @keyframes stamp-kill {
+      0% { transform: scale(3) rotate(-25deg); opacity: 0; }
+      50% { transform: scale(0.9) rotate(-12deg); opacity: 1; }
+      100% { transform: scale(1) rotate(-12deg); opacity: 1; }
+    }
+    .stamp-badge {
+      animation: stamp-kill 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.5); }
+  </style>
+</head>
+<body id="globalBody" class="apple-light-bg min-h-screen font-sans selection:bg-[#0071e3] selection:text-white antialiased relative overflow-x-hidden p-3 md:p-6 transition-all duration-500">
+
+  <!-- 顶部统一控制中心：四大异构布局切换器 + 音效与全局状态 -->
+  <header class="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+    
+    <!-- 形态选择胶囊 (核心切换点) -->
+    <div class="bg-white/80 backdrop-blur-xl border border-black/10 rounded-2xl p-1.5 shadow-md flex items-center gap-1.5 w-full md:w-auto overflow-x-auto">
+      <span class="text-xs font-bold px-3 text-slate-500 whitespace-nowrap">架构形态:</span>
+      
+      <!-- 形态 1：苹果瓷白 Bento 模块流 (亮色 / Bento Grid) -->
+      <button data-layout="bento" class="layout-nav-btn active px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-[#0071e3] text-white shadow-sm transition-all cursor-pointer whitespace-nowrap">
+        <span>🍱</span>
+        <span>苹果瓷白 Bento 流 (亮色卡片)</span>
+      </button>
+
+      <!-- 形态 2：VisionOS 晨曦空间双翼 (极光浅色 / 悬浮Dock+全息球) -->
+      <button data-layout="vision" class="layout-nav-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-slate-700 hover:bg-black/5 transition-all cursor-pointer whitespace-nowrap">
+        <span>🥽</span>
+        <span>VisionOS 空间双翼 (极光分体)</span>
+      </button>
+
+      <!-- 形态 3：纯白光子机甲战术台 (纯白科技 / 频谱仪+内核终端) -->
+      <button data-layout="mecha" class="layout-nav-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-slate-700 hover:bg-black/5 transition-all cursor-pointer whitespace-nowrap">
+        <span>⚡</span>
+        <span>光子机甲控制台 (频谱示波)</span>
+      </button>
+
+      <!-- 形态 4：极速新丑风活力看板 (高能明黄 / 四列Kanban) -->
+      <button data-layout="kanban" class="layout-nav-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-slate-700 hover:bg-black/5 transition-all cursor-pointer whitespace-nowrap">
+        <span>🎨</span>
+        <span>极速新丑风看板 (状态分栏)</span>
+      </button>
+    </div>
+
+    <!-- 右侧快捷功能：音效、模拟占用与刷新 -->
+    <div class="flex items-center gap-2.5 w-full md:w-auto justify-end">
+      <button id="globalSoundBtn" class="bg-white/80 backdrop-blur-md border border-black/10 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-white shadow-sm flex items-center gap-1.5 transition cursor-pointer">
+        <span id="soundIco">🔊</span>
+        <span id="soundTxt">触觉音效</span>
+      </button>
+      <button id="addMockBtn" class="bg-white/80 backdrop-blur-md border border-black/10 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-800 hover:bg-white shadow-sm hover:border-black/20 flex items-center gap-1.5 transition cursor-pointer">
+        <span>+ 注入占用</span>
+      </button>
+      <button id="rescanGlobalBtn" class="bg-gradient-to-r from-[#0071e3] to-[#4facfe] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition flex items-center gap-1.5 cursor-pointer">
+        <svg id="refreshSpinIcon" class="w-3.5 h-3.5 transition-transform duration-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>深度探测</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 布局形态 1：🍎 苹果瓷白 Bento 模块流 (Apple Bento Grid - 极致晶莹亮色) -->
+  <!-- ========================================================================= -->
+  <main id="layoutBento" class="layout-stage max-w-7xl mx-auto flex flex-col gap-5">
+    
+    <!-- Bento 顶部两翼模块 -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+      
+      <!-- Bento 模块 A: 苹果健康同心环与端口能量仪 (Canvas) -->
+      <div class="md:col-span-4 apple-bento-card rounded-3xl p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between pb-3 border-b border-black/5">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#34c759] shadow-[0_0_8px_#34c759]"></span>
+            <h3 class="font-bold text-sm text-slate-800">端口空间健康指数</h3>
+          </div>
+          <span class="text-[12px] font-mono text-[#0071e3] bg-blue-50 px-2 py-0.5 rounded-full font-bold">96.4% HEALTHY</span>
+        </div>
+
+        <div class="relative w-full aspect-square max-w-[210px] mx-auto my-3 flex items-center justify-center">
+          <canvas id="bentoRingCanvas" width="220" height="220" class="w-full h-full"></canvas>
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+            <span class="text-3xl font-black tracking-tight text-slate-900" id="bentoTotalPorts">14</span>
+            <span class="text-[12px] text-slate-400 font-medium">活跃占用</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-black/5 text-center text-xs">
+          <div><div class="text-[12px] text-slate-400">LISTEN</div><strong class="text-emerald-600 font-mono text-base" id="bentoListenNum">12</strong></div>
+          <div><div class="text-[12px] text-slate-400">冲突高危</div><strong class="text-rose-600 font-mono text-base" id="bentoConflictNum">2</strong></div>
+          <div><div class="text-[12px] text-slate-400">受保护</div><strong class="text-blue-600 font-mono text-base" id="bentoShieldNum">4</strong></div>
+        </div>
+      </div>
+
+      <!-- Bento 模块 B: 搜索、常用分组与全局白名单抽屉 -->
+      <div class="md:col-span-8 flex flex-col gap-4">
+        
+        <!-- 搜索与快捷操作 -->
+        <div class="apple-bento-card rounded-3xl p-5 flex flex-col gap-3.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-base">⚡</span>
+              <h2 class="font-bold text-base text-slate-900">快速端口检索与强杀控制</h2>
+            </div>
+            <div class="text-xs text-slate-400 font-mono">UAC ADMIN ELEVATED</div>
+          </div>
+
+          <div class="relative">
+            <input 
+              id="bentoSearchInput" 
+              type="text" 
+              placeholder="搜索端口号 (如 8080, 3000)、应用名称 (node, java)、或 PID..." 
+              class="w-full pl-10 pr-24 py-3 bg-white/90 border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition shadow-sm font-mono"
+            >
+            <span class="absolute left-3.5 top-3.5 text-slate-400">🔍</span>
+            <button id="bentoClearSearch" class="hidden absolute right-3 top-2.5 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs text-slate-600 transition">清空</button>
+          </div>
+
+          <!-- 苹果轻量胶囊分类 -->
+          <div class="flex items-center gap-2 flex-wrap text-xs">
+            <span class="text-slate-400 font-medium">常用预设:</span>
+            <button data-cat="all" class="bento-cat-btn active px-3 py-1.5 rounded-full font-bold bg-[#0071e3] text-white transition shadow-sm cursor-pointer">全部</button>
+            <button data-cat="web" class="bento-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:border-slate-400 transition cursor-pointer">Web (80/443/8080/3000)</button>
+            <button data-cat="db" class="bento-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:border-slate-400 transition cursor-pointer">数据库 (3306/6379/5432)</button>
+            <button data-cat="dev" class="bento-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:border-slate-400 transition cursor-pointer">开发服务 (5173/8000/9000)</button>
+            <button data-cat="conflict" class="bento-cat-btn px-3 py-1.5 rounded-full font-semibold bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition cursor-pointer">⚠️ 仅冲突项</button>
+          </div>
+        </div>
+
+        <!-- 批量管理与快捷动作卡 -->
+        <div class="apple-bento-card rounded-2xl px-5 py-3 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 font-semibold text-slate-700 cursor-pointer select-none">
+              <input type="checkbox" id="bentoSelectAll" class="rounded border-slate-300 text-[#0071e3] focus:ring-0">
+              <span>全选筛选结果</span>
+            </label>
+            <span class="text-slate-300">|</span>
+            <span class="text-slate-500">已选中: <strong id="bentoSelectedCount" class="text-rose-600 font-mono font-bold">0</strong> 项</span>
+          </div>
+
+          <button id="bentoBatchKillBtn" disabled class="px-4 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs disabled:opacity-30 disabled:pointer-events-none transition shadow-sm cursor-pointer flex items-center gap-1.5">
+            <span>💥</span>
+            <span>批量释放选中端口</span>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Bento 核心卡片瀑布流 (Card Grid - 告别单调表格，全新卡片式交互) -->
+    <div>
+      <div class="flex items-center justify-between mb-3 px-1">
+        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+          <span>📦</span>
+          <span>端口占用卡片矩阵</span>
+          <span class="text-xs font-normal text-slate-400" id="bentoCardCountLabel">(共 14 个)</span>
+        </h3>
+        <span class="text-xs text-slate-400">点击卡片可查看进程详情与完整路径</span>
+      </div>
+
+      <div id="bentoCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <!-- 动态生成卡片 -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 布局形态 2：🥽 VisionOS 晨曦空间双翼 (极光浅色 / 悬浮Dock + 3D全息球) -->
+  <!-- ========================================================================= -->
+  <main id="layoutVision" class="layout-stage max-w-7xl mx-auto hidden flex flex-col gap-6">
+    
+    <!-- 空间顶栏悬浮胶囊 -->
+    <div class="vision-floating-glass rounded-full px-6 py-2.5 flex items-center justify-between mx-auto max-w-3xl w-full">
+      <div class="flex items-center gap-3">
+        <span class="w-3 h-3 rounded-full bg-[#64d2ff] animate-ping"></span>
+        <span class="text-xs font-bold text-slate-800 tracking-wide">VisionOS 空间分体式端口探测</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-mono">
+        <span class="px-2.5 py-0.5 rounded-full bg-white/70 border border-white text-slate-700 font-bold">全息深度感知</span>
+        <span class="text-slate-400">|</span>
+        <span class="text-blue-600 font-bold" id="visionPortStat">14 NODES ACTIVE</span>
+      </div>
+    </div>
+
+    <!-- 三栏悬浮分体布局：左翼垂直 Dock + 中央 3D 全息球 + 右翼进程树折叠面板 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      
+      <!-- 左翼：垂直悬浮操作 Dock -->
+      <div class="lg:col-span-2 vision-floating-glass rounded-3xl p-3 flex lg:flex-col gap-2 justify-between">
+        <div class="flex lg:flex-col gap-1.5 w-full">
+          <button data-vcat="all" class="v-dock-btn active p-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold bg-[#0071e3] text-white shadow-md transition cursor-pointer">
+            <span class="text-base">🌐</span>
+            <span class="hidden lg:inline">全部空间</span>
+          </button>
+          <button data-vcat="web" class="v-dock-btn p-3 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-slate-700 hover:bg-white/60 transition cursor-pointer">
+            <span class="text-base">🌍</span>
+            <span class="hidden lg:inline">Web服务</span>
+          </button>
+          <button data-vcat="db" class="v-dock-btn p-3 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-slate-700 hover:bg-white/60 transition cursor-pointer">
+            <span class="text-base">🗄️</span>
+            <span class="hidden lg:inline">数据库</span>
+          </button>
+          <button data-vcat="dev" class="v-dock-btn p-3 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-slate-700 hover:bg-white/60 transition cursor-pointer">
+            <span class="text-base">🛠️</span>
+            <span class="hidden lg:inline">本地构建</span>
+          </button>
+        </div>
+
+        <div class="pt-2 border-t border-black/5 hidden lg:flex flex-col gap-2">
+          <div class="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100 text-[12px] text-blue-900 leading-tight">
+            <strong>3D 悬浮球说明</strong><br>
+            光标靠近球体节点可捕捉万有引力微震，点击即可锁定。
+          </div>
+        </div>
+      </div>
+
+      <!-- 中央：3D 空间全息球体 Canvas -->
+      <div class="lg:col-span-5 vision-floating-glass rounded-3xl p-5 flex flex-col items-center relative overflow-hidden">
+        <div class="w-full flex items-center justify-between pb-2 border-b border-black/5 mb-2">
+          <span class="text-xs font-bold text-slate-800">3D 极光全息量子球</span>
+          <span class="text-[12px] font-mono text-cyan-700 font-semibold">SPATIAL 3D ORBIT</span>
+        </div>
+
+        <div class="relative w-full aspect-square max-w-[320px] flex items-center justify-center my-2">
+          <canvas id="visionSphereCanvas" width="320" height="320" class="w-full h-full cursor-grab active:cursor-grabbing rounded-full"></canvas>
+          <div id="visionHoverBadge" class="hidden absolute pointer-events-none px-3 py-1.5 rounded-xl bg-white/90 border border-white text-xs font-mono text-slate-900 shadow-xl backdrop-blur-md">
+            <!-- 悬浮内容 -->
+          </div>
+        </div>
+
+        <div class="text-[12px] text-slate-500 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span>球体随空间动态旋转，红色为占用冲突节点</span>
+        </div>
+      </div>
+
+      <!-- 右翼：进程层级折叠树与强杀面板 -->
+      <div class="lg:col-span-5 vision-floating-glass rounded-3xl p-5 flex flex-col gap-4">
+        <div class="flex items-center justify-between pb-3 border-b border-black/5">
+          <div class="flex items-center gap-2">
+            <span class="text-base">🌳</span>
+            <h3 class="font-bold text-sm text-slate-800">进程折叠层级树 (Process Tree)</h3>
+          </div>
+          <span class="text-xs text-slate-400">支持树杀 (Tree-Kill)</span>
+        </div>
+
+        <!-- 进程树列表 -->
+        <div id="visionProcessTreeContainer" class="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+          <!-- 动态填充树结构 -->
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 布局形态 3：⚡ 纯白光子机甲战术台 (Photon Mecha White - 示波器+内核终端) -->
+  <!-- ========================================================================= -->
+  <main id="layoutMecha" class="layout-stage max-w-7xl mx-auto hidden flex flex-col gap-5">
+    
+    <!-- 顶部全宽：0-65535 全频段示波器 / 频谱跳动仪 (Canvas Oscilloscope) -->
+    <div class="mecha-panel p-4 flex flex-col gap-2">
+      <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 bg-[#ff6b00] rounded-none"></span>
+          <h2 class="font-black text-sm uppercase tracking-wider text-slate-900">PORT SPECTRUM OSCILLOSCOPE // 端口频谱示波器</h2>
+        </div>
+        <div class="flex items-center gap-3 font-mono text-xs text-slate-600">
+          <span>BW: 0-65535</span>
+          <span>SWEEP: 60Hz</span>
+          <span class="text-[#ff6b00] font-bold">REAL-TIME SNIFFER</span>
+        </div>
+      </div>
+
+      <div class="w-full h-28 relative my-1">
+        <canvas id="mechaSpectrumCanvas" class="w-full h-full rounded"></canvas>
+      </div>
+
+      <div class="flex items-center justify-between text-[12px] font-mono text-slate-500 border-t border-slate-200 pt-1">
+        <span>[0] SYSTEM PORTS</span>
+        <span>[1024] REGISTERED PORTS</span>
+        <span>[49152] DYNAMIC PORTS [65535]</span>
+      </div>
+    </div>
+
+    <!-- 下半段双栏：左侧紧凑数据战术表 + 右侧实时内核日志终端 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- 左栏：高密度机甲数据表 -->
+      <div class="lg:col-span-7 mecha-panel p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b-2 border-slate-200">
+          <div class="flex items-center gap-2">
+            <span class="font-black text-xs text-slate-800">ACTIVE SOCKETS MATRIX</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="mechaSearchInput" type="text" placeholder="FILTER PID/PORT..." class="px-2 py-1 bg-slate-100 border border-slate-300 text-xs font-mono rounded">
+          </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-[380px]">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-slate-100 border-b-2 border-slate-300 text-slate-600">
+              <tr>
+                <th class="p-2">PORT</th>
+                <th class="p-2">PROTO</th>
+                <th class="p-2">PROCESS</th>
+                <th class="p-2">PID</th>
+                <th class="p-2">STATE</th>
+                <th class="p-2 text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody id="mechaTableBody" class="divide-y divide-slate-200">
+              <!-- 机甲数据行 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 右栏：实时内核指令遥测终端 (Terminal Logs) -->
+      <div class="lg:col-span-5 bg-slate-950 text-emerald-400 p-4 border-2 border-slate-800 rounded font-mono text-xs flex flex-col justify-between shadow-xl">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+          <div class="flex items-center gap-2 text-slate-300">
+            <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+            <span class="font-bold">KERNEL INTERFACE TERMINAL</span>
+          </div>
+          <button id="clearMechaLogsBtn" class="text-[12px] text-slate-500 hover:text-white">CLEAR</button>
+        </div>
+
+        <!-- 滚动日志窗口 -->
+        <div id="mechaLogOutput" class="space-y-1.5 h-80 overflow-y-auto pr-1 text-[12px] text-slate-300">
+          <div><span class="text-slate-500">[SYSTEM]</span> <span class="text-emerald-400">WIN32 IP-Helper driver initialized.</span></div>
+          <div><span class="text-slate-500">[HOOK]</span> <span class="text-cyan-400">Mapped GetExtendedTcpTable API @ 0x7FFA120</span></div>
+          <div><span class="text-slate-500">[SCAN]</span> 14 active listening ports detected.</div>
+          <div><span class="text-slate-500">[INFO]</span> Ready to dispatch TerminateProcess signals.</div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-[12px] text-slate-500">
+          <span>PID PRIVILEGE: SeDebugPrivilege</span>
+          <span class="text-emerald-400">STATUS: ONLINE</span>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 布局形态 4：🎨 极速新丑风活力大看板 (Neobrutalism Kanban Board) -->
+  <!-- ========================================================================= -->
+  <main id="layoutKanban" class="layout-stage max-w-7xl mx-auto hidden flex flex-col gap-6">
+    
+    <!-- 看板头部标语 -->
+    <div class="neo-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#ffe600]">
+      <div>
+        <h2 class="font-black text-xl text-slate-900 tracking-tight flex items-center gap-2">
+          <span>⚡</span>
+          <span>PORT KILLER KANBAN 看板流</span>
+        </h2>
+        <p class="text-xs font-bold text-slate-800 mt-0.5">直观按状态四列分栏，点击红印章强杀，极具视觉冲击力！</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="neo-card px-3 py-1 font-black text-xs bg-white">4 分类状态流</span>
+        <button id="kanbanKillAllAlertBtn" class="neo-card px-4 py-1.5 font-black text-xs bg-rose-500 text-white hover:bg-rose-600 transition cursor-pointer">
+          💥 一键清洗所有冲突项
+        </button>
+      </div>
+    </div>
+
+    <!-- 四列看板主体 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+      
+      <!-- 列 1: ⚠️ 占用冲突 (Conflict / High Priority) -->
+      <div class="neo-card p-3.5 bg-rose-50 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b-2 border-black">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 bg-rose-500 rounded-full border border-black"></span>
+            <h3 class="font-black text-xs text-rose-900">占用冲突 / 待强杀</h3>
+          </div>
+          <span class="font-black text-xs bg-rose-200 border border-black px-1.5 py-0.5" id="kanbanCountConflict">2</span>
+        </div>
+        <div id="kanbanColConflict" class="space-y-3 min-h-[220px]">
+          <!-- 卡片动态填充 -->
+        </div>
+      </div>
+
+      <!-- 列 2: 🌐 Web 与监听服务 (Listening Services) -->
+      <div class="neo-card p-3.5 bg-blue-50 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b-2 border-black">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 bg-blue-500 rounded-full border border-black"></span>
+            <h3 class="font-black text-xs text-blue-900">Web / 服务监听</h3>
+          </div>
+          <span class="font-black text-xs bg-blue-200 border border-black px-1.5 py-0.5" id="kanbanCountListen">6</span>
+        </div>
+        <div id="kanbanColListen" class="space-y-3 min-h-[220px]">
+          <!-- 卡片动态填充 -->
+        </div>
+      </div>
+
+      <!-- 列 3: 🗄️ 数据库与开发微服务 (Database & Dev) -->
+      <div class="neo-card p-3.5 bg-emerald-50 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b-2 border-black">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 bg-emerald-500 rounded-full border border-black"></span>
+            <h3 class="font-black text-xs text-emerald-900">数据库与后台组件</h3>
+          </div>
+          <span class="font-black text-xs bg-emerald-200 border border-black px-1.5 py-0.5" id="kanbanCountDb">3</span>
+        </div>
+        <div id="kanbanColDb" class="space-y-3 min-h-[220px]">
+          <!-- 卡片动态填充 -->
+        </div>
+      </div>
+
+      <!-- 列 4: 🛡️ 系统核心守护 (Protected Whitelist) -->
+      <div class="neo-card p-3.5 bg-slate-100 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b-2 border-black">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 bg-slate-500 rounded-full border border-black"></span>
+            <h3 class="font-black text-xs text-slate-800">系统受护进程</h3>
+          </div>
+          <span class="font-black text-xs bg-slate-200 border border-black px-1.5 py-0.5" id="kanbanCountProtected">3</span>
+        </div>
+        <div id="kanbanColProtected" class="space-y-3 min-h-[220px]">
+          <!-- 卡片动态填充 -->
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 通用高保真强杀确认弹窗 (动态适配当前激活的主题风格) -->
+  <!-- ========================================================================= -->
+  <div id="universalModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div id="modalBox" class="bg-white border-2 border-slate-900 p-6 rounded-3xl max-w-md w-full shadow-2xl transform scale-95 transition-all duration-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚠️</span>
+          <h3 class="font-black text-base text-slate-900">强制终止进程确认</h3>
+        </div>
+        <button id="modalXBtn" class="text-slate-400 hover:text-slate-800 text-lg cursor-pointer font-mono">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <p class="text-slate-600 leading-relaxed">
+          即将调用 Windows 底层 <code class="text-rose-600 font-bold font-mono">TerminateProcess</code> 强杀该进程，其占用的端口将被瞬间解绑。
+        </p>
+
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 font-mono">
+          <div class="flex justify-between"><span class="text-slate-500">占用端口:</span><strong id="uniPort" class="text-[#0071e3] text-sm">:8080</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">进程名称:</span><strong id="uniName" class="text-slate-900">node.exe</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">进程 PID:</span><strong id="uniPID" class="text-amber-600 font-bold">14220</strong></div>
+          <div class="flex justify-between"><span class="text-slate-500">内存分配:</span><span id="uniMem" class="text-slate-700">342 MB</span></div>
+          <div class="pt-1.5 border-t border-slate-200">
+            <span class="text-slate-400 block mb-1">执行路径:</span>
+            <div id="uniPath" class="text-[12px] text-slate-600 break-all p-1.5 rounded bg-white border border-slate-200">C:\Program Files\nodejs\node.exe</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-5 pt-3 border-t border-slate-100">
+        <button id="modalDismissBtn" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer">
+          取消放弃
+        </button>
+        <button id="modalActionKillBtn" class="px-5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs shadow-md shadow-rose-500/20 active:scale-95 transition cursor-pointer flex items-center gap-1.5">
+          <span>💥 立即强杀</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮动 Toast 提示容器 -->
+  <div id="globalToastBox" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ========================================================================= -->
+  <!-- 业务逻辑、四大布局渲染与 Canvas 引擎脚本 -->
+  <!-- ========================================================================= -->
+  <script>
+    // 基础进程模拟数据
+    const masterDataset = [
+      { id: 1, port: 8080, proto: 'TCP', name: 'node.exe', pid: 14220, state: 'LISTENING', mem: '342 MB', path: 'C:\\Program Files\\nodejs\\node.exe', cat: 'web', protected: false, conflict: true, parent: 'cmd.exe [PID 1200]' },
+      { id: 2, port: 3000, proto: 'TCP', name: 'next-server.exe', pid: 9812, state: 'LISTENING', mem: '215 MB', path: 'D:\\DEV\\frontend\\.next\\standalone\\server.exe', cat: 'web', protected: false, conflict: true, parent: 'node.exe [PID 14220]' },
+      { id: 3, port: 3306, proto: 'TCP', name: 'mysqld.exe', pid: 4520, state: 'LISTENING', mem: '680 MB', path: 'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe', cat: 'db', protected: false, conflict: false, parent: 'services.exe' },
+      { id: 4, port: 6379, proto: 'TCP', name: 'redis-server.exe', pid: 5124, state: 'LISTENING', mem: '45 MB', path: 'C:\\Redis\\redis-server.exe', cat: 'db', protected: false, conflict: false, parent: 'explorer.exe' },
+      { id: 5, port: 5173, proto: 'TCP', name: 'vite.exe', pid: 18452, state: 'LISTENING', mem: '128 MB', path: 'C:\\Users\\Admin\\AppData\\Roaming\\npm\\vite.cmd', cat: 'dev', protected: false, conflict: false, parent: 'Code.exe [PID 8890]' },
+      { id: 6, port: 80, proto: 'TCP', name: 'nginx.exe', pid: 2316, state: 'LISTENING', mem: '38 MB', path: 'D:\\env\\nginx-1.24\\nginx.exe', cat: 'web', protected: false, conflict: false, parent: 'nginx.exe (master)' },
+      { id: 7, port: 443, proto: 'TCP', name: 'nginx.exe', pid: 2316, state: 'LISTENING', mem: '38 MB', path: 'D:\\env\\nginx-1.24\\nginx.exe', cat: 'web', protected: false, conflict: false, parent: 'nginx.exe (master)' },
+      { id: 8, port: 5432, proto: 'TCP', name: 'postgres.exe', pid: 6188, state: 'LISTENING', mem: '185 MB', path: 'C:\\Program Files\\PostgreSQL\\16\\bin\\postgres.exe', cat: 'db', protected: true, conflict: false, parent: 'services.exe' },
+      { id: 9, port: 8000, proto: 'TCP', name: 'python.exe', pid: 21044, state: 'LISTENING', mem: '154 MB', path: 'C:\\Python311\\python.exe (uvicorn)', cat: 'dev', protected: false, conflict: false, parent: 'cmd.exe' },
+      { id: 10, port: 9000, proto: 'TCP', name: 'php-cgi.exe', pid: 8432, state: 'LISTENING', mem: '92 MB', path: 'D:\\php\\php-8.2\\php-cgi.exe', cat: 'dev', protected: false, conflict: false, parent: 'nginx.exe' },
+      { id: 11, port: 27017, proto: 'TCP', name: 'mongod.exe', pid: 7210, state: 'LISTENING', mem: '410 MB', path: 'C:\\MongoDB\\bin\\mongod.exe', cat: 'db', protected: false, conflict: false, parent: 'services.exe' },
+      { id: 12, port: 135, proto: 'TCP', name: 'svchost.exe', pid: 980, state: 'LISTENING', mem: '24 MB', path: 'C:\\Windows\\System32\\svchost.exe', cat: 'sys', protected: true, conflict: false, parent: 'services.exe' },
+      { id: 13, port: 445, proto: 'TCP', name: 'System', pid: 4, state: 'LISTENING', mem: '12 MB', path: 'ntoskrnl.exe', cat: 'sys', protected: true, conflict: false, parent: 'System' },
+      { id: 14, port: 53, proto: 'UDP', name: 'dns.exe', pid: 1450, state: 'ESTABLISHED', mem: '18 MB', path: 'C:\\Windows\\System32\\dns.exe', cat: 'sys', protected: true, conflict: false, parent: 'svchost.exe' }
+    ];
+
+    let dataset = [...masterDataset];
+    let selectedSet = new Set();
+    let currentLayout = 'bento';
+    let currentCat = 'all';
+    let searchKeyword = '';
+    let targetPendingKill = null;
+    let soundEnabled = true;
+
+    // Web Audio 合成音效
+    let audioCtx = null;
+    function playAudioTone(type) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'pop') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1200, now);
+          osc.frequency.exponentialRampToValueAtTime(700, now + 0.04);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        } else if (type === 'stamp') {
+          // 新丑风盖章强力打击音
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.exponentialRampToValueAtTime(45, now + 0.2);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (type === 'laser') {
+          // 机甲光子激光消解音
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+      } catch (e) {}
+    }
+
+    // 切换四大布局
+    function switchLayout(layoutName) {
+      currentLayout = layoutName;
+      const body = document.getElementById('globalBody');
+
+      // 更新全局背景
+      body.className = body.className.replace(/apple-light-bg|vision-light-bg|mecha-light-bg|neo-bg/g, '');
+      if (layoutName === 'bento') body.classList.add('apple-light-bg');
+      else if (layoutName === 'vision') body.classList.add('vision-light-bg');
+      else if (layoutName === 'mecha') body.classList.add('mecha-light-bg');
+      else if (layoutName === 'kanban') body.classList.add('neo-bg');
+
+      // 更新按钮激活状态
+      document.querySelectorAll('.layout-nav-btn').forEach(btn => {
+        if (btn.dataset.layout === layoutName) {
+          btn.className = 'layout-nav-btn active px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-[#0071e3] text-white shadow-sm transition-all cursor-pointer whitespace-nowrap';
+        } else {
+          btn.className = 'layout-nav-btn px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-slate-700 hover:bg-black/5 transition-all cursor-pointer whitespace-nowrap';
+        }
+      });
+
+      // 切换主展示容器
+      const stages = ['layoutBento', 'layoutVision', 'layoutMecha', 'layoutKanban'];
+      stages.forEach(id => {
+        const el = document.getElementById(id);
+        if (id.toLowerCase().includes(layoutName)) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+
+      playAudioTone('pop');
+      renderAllLayouts();
+    }
+
+    document.querySelectorAll('.layout-nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchLayout(btn.dataset.layout));
+    });
+
+    // 过滤数据计算
+    function getFilteredData() {
+      return dataset.filter(item => {
+        if (currentCat === 'web' && !['80', '443', '8080', '3000'].includes(item.port.toString())) return false;
+        if (currentCat === 'db' && !['3306', '6379', '5432', '27017'].includes(item.port.toString())) return false;
+        if (currentCat === 'dev' && !['5173', '8000', '9000'].includes(item.port.toString())) return false;
+        if (currentCat === 'conflict' && !item.conflict) return false;
+
+        if (searchKeyword.trim()) {
+          const q = searchKeyword.toLowerCase().trim();
+          return item.port.toString().includes(q) ||
+                 item.name.toLowerCase().includes(q) ||
+                 item.pid.toString().includes(q) ||
+                 item.path.toLowerCase().includes(q);
+        }
+        return true;
+      });
+    }
+
+    // ==========================================
+    // 渲染布局 1: 苹果瓷白 Bento 卡片瀑布流
+    // ==========================================
+    function renderBentoLayout() {
+      const container = document.getElementById('bentoCardsContainer');
+      const filtered = getFilteredData();
+      container.innerHTML = '';
+
+      document.getElementById('bentoTotalPorts').textContent = dataset.length;
+      document.getElementById('bentoListenNum').textContent = dataset.filter(d => d.state === 'LISTENING').length;
+      document.getElementById('bentoConflictNum').textContent = dataset.filter(d => d.conflict).length;
+      document.getElementById('bentoShieldNum').textContent = dataset.filter(d => d.protected).length;
+      document.getElementById('bentoCardCountLabel').textContent = `(展示 ${filtered.length} / 共 ${dataset.length} 个)`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full apple-bento-card rounded-3xl p-12 text-center text-slate-400">
+            <span class="text-4xl block mb-2">🔍</span>
+            <p class="font-bold">未匹配到端口占用进程</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const isSelected = selectedSet.has(item.id);
+        const card = document.createElement('div');
+        card.id = `bento-card-${item.id}`;
+        card.className = `apple-bento-card rounded-3xl p-5 flex flex-col justify-between relative group ${isSelected ? 'ring-2 ring-[#0071e3] bg-blue-50/50' : ''}`;
+
+        // 图标推导
+        let appIcon = '⚙️';
+        if (item.name.includes('node')) appIcon = '🟢';
+        else if (item.name.includes('next')) appIcon = '▲';
+        else if (item.name.includes('mysql') || item.name.includes('postgre')) appIcon = '🐬';
+        else if (item.name.includes('redis')) appIcon = '🔴';
+        else if (item.name.includes('vite')) appIcon = '⚡';
+        else if (item.name.includes('nginx')) appIcon = '🌐';
+        else if (item.name.includes('python')) appIcon = '🐍';
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-lg shadow-sm">${appIcon}</span>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-900 group-hover:text-[#0071e3] transition flex items-center gap-1.5">
+                    ${item.name}
+                    ${item.conflict ? '<span class="text-[12px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full font-bold">冲突</span>' : ''}
+                  </h4>
+                  <span class="text-[12px] font-mono text-slate-400">PID: ${item.pid} | ${item.proto}</span>
+                </div>
+              </div>
+              <input type="checkbox" data-id="${item.id}" class="bento-check rounded border-slate-300 text-[#0071e3] focus:ring-0 cursor-pointer" ${isSelected ? 'checked' : ''}>
+            </div>
+
+            <div class="p-2.5 rounded-2xl bg-slate-50/80 border border-slate-100 mb-3 space-y-1">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">占用端口:</span>
+                <span class="font-black font-mono text-base ${item.conflict ? 'text-rose-600' : 'text-[#0071e3]'}">:${item.port}</span>
+              </div>
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="text-slate-400">物理内存:</span>
+                <span class="font-mono text-slate-700 font-semibold">${item.mem}</span>
+              </div>
+            </div>
+
+            <p class="text-[12px] text-slate-400 truncate mb-4" title="${item.path}">${item.path}</p>
+          </div>
+
+          <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+            <span class="text-[12px] font-mono text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">${item.state}</span>
+            ${item.protected ? `
+              <span class="text-[12px] text-slate-400 bg-slate-100 px-2.5 py-1 rounded-xl font-bold">系统保护</span>
+            ` : `
+              <button data-kill-id="${item.id}" class="bento-kill-btn px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-xs border border-rose-200 hover:border-rose-500 transition shadow-sm active:scale-95 cursor-pointer flex items-center gap-1">
+                <span>💥 强杀</span>
+              </button>
+            `}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      // 绑定多选与单条强杀
+      document.querySelectorAll('.bento-check').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const id = parseInt(e.target.dataset.id);
+          if (e.target.checked) selectedSet.add(id);
+          else selectedSet.delete(id);
+          updateBentoSelection();
+        });
+      });
+
+      document.querySelectorAll('.bento-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.killId);
+          const t = dataset.find(d => d.id === id);
+          if (t) promptUniversalKill(t);
+        });
+      });
+
+      updateBentoSelection();
+      drawBentoRingCanvas();
+    }
+
+    function updateBentoSelection() {
+      const count = selectedSet.size;
+      document.getElementById('bentoSelectedCount').textContent = count;
+      document.getElementById('bentoBatchKillBtn').disabled = count === 0;
+      const filtered = getFilteredData();
+      document.getElementById('bentoSelectAll').checked = filtered.length > 0 && filtered.every(f => selectedSet.has(f.id));
+    }
+
+    // ==========================================
+    // 渲染布局 2: VisionOS 晨曦空间双翼 + 进程树
+    // ==========================================
+    function renderVisionLayout() {
+      const treeContainer = document.getElementById('visionProcessTreeContainer');
+      const filtered = getFilteredData();
+      treeContainer.innerHTML = '';
+
+      document.getElementById('visionPortStat').textContent = `${dataset.length} NODES ACTIVE`;
+
+      // 按父进程/应用聚合渲染树结构
+      filtered.forEach(item => {
+        const treeCard = document.createElement('div');
+        treeCard.className = 'p-3.5 rounded-2xl bg-white/70 border border-white hover:bg-white/90 shadow-sm transition space-y-2';
+
+        treeCard.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full ${item.conflict ? 'bg-rose-500 animate-ping' : 'bg-cyan-500'}"></span>
+              <strong class="text-xs text-slate-800 font-bold">${item.name}</strong>
+              <span class="text-[12px] font-mono text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded">PID: ${item.pid}</span>
+            </div>
+            <span class="font-mono font-black text-sm text-[#0071e3] bg-blue-50 px-2 py-0.5 rounded-full">:${item.port}</span>
+          </div>
+
+          <div class="pl-4 border-l-2 border-slate-200 ml-1 text-[12px] space-y-1">
+            <div class="text-slate-500 flex items-center justify-between">
+              <span>父级链: <code class="text-slate-700">${item.parent}</code></span>
+              <span>内存: ${item.mem}</span>
+            </div>
+            <div class="text-slate-400 truncate max-w-[280px]">${item.path}</div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-1">
+            ${item.protected ? '<span class="text-[12px] text-slate-400">守护锁</span>' : `
+              <button data-kill-id="${item.id}" class="vision-kill-action px-3 py-1 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white text-xs font-bold border border-rose-200 transition cursor-pointer">
+                终结此节点
+              </button>
+            `}
+          </div>
+        `;
+
+        treeContainer.appendChild(treeCard);
+      });
+
+      document.querySelectorAll('.vision-kill-action').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.killId);
+          const t = dataset.find(d => d.id === id);
+          if (t) promptUniversalKill(t);
+        });
+      });
+    }
+
+    // ==========================================
+    // 渲染布局 3: 纯白光子机甲战术台与日志终端
+    // ==========================================
+    function renderMechaLayout() {
+      const tbody = document.getElementById('mechaTableBody');
+      const filtered = getFilteredData();
+      tbody.innerHTML = '';
+
+      filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-200';
+        tr.innerHTML = `
+          <td class="p-2 font-black ${item.conflict ? 'text-rose-600' : 'text-[#ff6b00]'}">:${item.port}</td>
+          <td class="p-2 text-slate-500">${item.proto}</td>
+          <td class="p-2 font-bold text-slate-800">${item.name}</td>
+          <td class="p-2 text-amber-600 font-bold">${item.pid}</td>
+          <td class="p-2"><span class="px-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold">${item.state}</span></td>
+          <td class="p-2 text-right">
+            ${item.protected ? '<span class="text-slate-400 text-[10px]">SYS</span>' : `
+              <button data-kill-id="${item.id}" class="mecha-kill-btn mecha-cut-btn px-2 py-0.5 bg-rose-500 hover:bg-rose-600 text-white font-black text-[11px] cursor-pointer">
+                KILL
+              </button>
+            `}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.mecha-kill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.killId);
+          const t = dataset.find(d => d.id === id);
+          if (t) promptUniversalKill(t);
+        });
+      });
+    }
+
+    function appendMechaLog(msg, type = 'info') {
+      const box = document.getElementById('mechaLogOutput');
+      const div = document.createElement('div');
+      const time = new Date().toTimeString().split(' ')[0];
+      div.innerHTML = `<span class="text-slate-500">[${time}]</span> ${msg}`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // ==========================================
+    // 渲染布局 4: 极速新丑风活力大看板 (Kanban)
+    // ==========================================
+    function renderKanbanLayout() {
+      const cols = {
+        conflict: document.getElementById('kanbanColConflict'),
+        listen: document.getElementById('kanbanColListen'),
+        db: document.getElementById('kanbanColDb'),
+        protected: document.getElementById('kanbanColProtected')
+      };
+
+      Object.values(cols).forEach(c => c.innerHTML = '');
+
+      const conflictList = dataset.filter(d => d.conflict);
+      const listenList = dataset.filter(d => !d.conflict && !d.protected && (d.cat === 'web' || d.cat === 'dev'));
+      const dbList = dataset.filter(d => !d.conflict && !d.protected && d.cat === 'db');
+      const protectedList = dataset.filter(d => d.protected);
+
+      document.getElementById('kanbanCountConflict').textContent = conflictList.length;
+      document.getElementById('kanbanCountListen').textContent = listenList.length;
+      document.getElementById('kanbanCountDb').textContent = dbList.length;
+      document.getElementById('kanbanCountProtected').textContent = protectedList.length;
+
+      // 渲染单卡片通用生成器
+      function createNeoCard(item, isConflict = false) {
+        const card = document.createElement('div');
+        card.className = `neo-card p-3 rounded-lg flex flex-col justify-between gap-2.5 relative ${isConflict ? 'bg-white border-rose-600' : 'bg-white'}`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="font-black text-sm text-slate-900 truncate max-w-[140px]">${item.name}</span>
+              <span class="font-black font-mono text-base ${isConflict ? 'text-rose-600' : 'text-blue-600'}">:${item.port}</span>
+            </div>
+            <div class="text-[12px] font-mono text-slate-500 mt-1">PID: ${item.pid} | 内存: ${item.mem}</div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t-2 border-slate-100">
+            <span class="text-[10px] font-bold px-1.5 py-0.5 border border-black bg-slate-100">${item.proto}</span>
+            ${item.protected ? '<span class="text-xs font-black text-slate-400">🛡️ 核心锁</span>' : `
+              <button data-kill-id="${item.id}" class="kanban-stamp-btn neo-card px-3 py-1 font-black text-xs bg-rose-500 hover:bg-rose-600 text-white cursor-pointer active:translate-y-0.5">
+                KILL 强杀
+              </button>
+            `}
+          </div>
+        `;
+        return card;
+      }
+
+      conflictList.forEach(item => cols.conflict.appendChild(createNeoCard(item, true)));
+      listenList.forEach(item => cols.listen.appendChild(createNeoCard(item)));
+      dbList.forEach(item => cols.db.appendChild(createNeoCard(item)));
+      protectedList.forEach(item => cols.protected.appendChild(createNeoCard(item)));
+
+      document.querySelectorAll('.kanban-stamp-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.killId);
+          const t = dataset.find(d => d.id === id);
+          if (t) promptUniversalKill(t);
+        });
+      });
+    }
+
+    function renderAllLayouts() {
+      if (currentLayout === 'bento') renderBentoLayout();
+      else if (currentLayout === 'vision') renderVisionLayout();
+      else if (currentLayout === 'mecha') renderMechaLayout();
+      else if (currentLayout === 'kanban') renderKanbanLayout();
+    }
+
+    // ==========================================
+    // Canvas 1: 苹果同心能量环 (Bento 模式)
+    // ==========================================
+    const bentoCanvas = document.getElementById('bentoRingCanvas');
+    const bentoCtx = bentoCanvas.getContext('2d');
+    let bentoAngle = 0;
+
+    function drawBentoRingCanvas() {
+      if (currentLayout !== 'bento') return;
+      const w = bentoCanvas.width;
+      const h = bentoCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      bentoCtx.clearRect(0, 0, w, h);
+
+      // 绘制同心渐变环
+      const rings = [
+        { r: 85, color: '#34c759', progress: 0.85 }, // 正常
+        { r: 68, color: '#0071e3', progress: 0.70 }, // 监听
+        { r: 51, color: '#ff3b30', progress: 0.25 }  // 冲突
+      ];
+
+      rings.forEach(ring => {
+        // 底轨
+        bentoCtx.beginPath();
+        bentoCtx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+        bentoCtx.strokeStyle = 'rgba(0,0,0,0.06)';
+        bentoCtx.lineWidth = 9;
+        bentoCtx.stroke();
+
+        // 动态活跃段
+        bentoCtx.beginPath();
+        bentoCtx.arc(cx, cy, ring.r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ring.progress);
+        bentoCtx.strokeStyle = ring.color;
+        bentoCtx.lineWidth = 9;
+        bentoCtx.lineCap = 'round';
+        bentoCtx.stroke();
+      });
+    }
+
+    // ==========================================
+    // Canvas 2: VisionOS 3D 空间全息球体
+    // ==========================================
+    const vCanvas = document.getElementById('visionSphereCanvas');
+    const vCtx = vCanvas.getContext('2d');
+    let sphereAngleX = 0;
+    let sphereAngleY = 0;
+
+    function drawVisionSphere() {
+      if (currentLayout === 'vision') {
+        const w = vCanvas.width;
+        const h = vCanvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+        const R = 110;
+
+        vCtx.clearRect(0, 0, w, h);
+
+        // 绘制三维经纬光圈
+        vCtx.beginPath();
+        vCtx.arc(cx, cy, R, 0, Math.PI * 2);
+        vCtx.strokeStyle = 'rgba(0, 113, 227, 0.15)';
+        vCtx.lineWidth = 1.5;
+        vCtx.stroke();
+
+        // 投影渲染各个端口节点
+        dataset.forEach((item, idx) => {
+          const theta = (idx / dataset.length) * Math.PI * 2 + sphereAngleX;
+          const phi = (idx * 0.7) + sphereAngleY;
+
+          const x3d = R * Math.sin(phi) * Math.cos(theta);
+          const y3d = R * Math.sin(phi) * Math.sin(theta);
+          const z3d = R * Math.cos(phi);
+
+          // 透视投影
+          const fov = 240;
+          const scale = fov / (fov + z3d);
+          const px = cx + x3d * scale;
+          const py = cy + y3d * scale;
+
+          const size = Math.max(3 * scale, 1.5);
+          const alpha = (z3d + R) / (2 * R);
+
+          vCtx.beginPath();
+          vCtx.arc(px, py, size, 0, Math.PI * 2);
+          vCtx.fillStyle = item.conflict ? `rgba(255, 59, 48, ${0.4 + alpha * 0.6})` : `rgba(0, 113, 227, ${0.3 + alpha * 0.7})`;
+          vCtx.fill();
+
+          if (scale > 0.9) {
+            vCtx.fillStyle = 'rgba(26, 30, 40, 0.75)';
+            vCtx.font = '8px monospace';
+            vCtx.fillText(`:${item.port}`, px + 5, py + 3);
+          }
+        });
+
+        sphereAngleX += 0.008;
+        sphereAngleY += 0.004;
+      }
+      requestAnimationFrame(drawVisionSphere);
+    }
+    requestAnimationFrame(drawVisionSphere);
+
+    // ==========================================
+    // Canvas 3: 纯白光子机甲示波器频谱仪
+    // ==========================================
+    const mechaCanvas = document.getElementById('mechaSpectrumCanvas');
+    const mechaCtx = mechaCanvas.getContext('2d');
+    let mechaTick = 0;
+
+    function drawMechaSpectrum() {
+      if (currentLayout === 'mecha' && mechaCanvas.clientWidth) {
+        mechaCanvas.width = mechaCanvas.clientWidth;
+        mechaCanvas.height = mechaCanvas.clientHeight;
+        const w = mechaCanvas.width;
+        const h = mechaCanvas.height;
+
+        mechaCtx.clearRect(0, 0, w, h);
+
+        // 背景网格线
+        mechaCtx.strokeStyle = '#f1f5f9';
+        for (let x = 0; x < w; x += 40) {
+          mechaCtx.beginPath(); mechaCtx.moveTo(x, 0); mechaCtx.lineTo(x, h); mechaCtx.stroke();
+        }
+        for (let y = 0; y < h; y += 20) {
+          mechaCtx.beginPath(); mechaCtx.moveTo(0, y); mechaCtx.lineTo(w, y); mechaCtx.stroke();
+        }
+
+        // 示波器波形模拟
+        mechaCtx.beginPath();
+        mechaCtx.moveTo(0, h / 2);
+        for (let x = 0; x < w; x += 3) {
+          const freq = (x / w) * 65535;
+          let wave = Math.sin(x * 0.03 + mechaTick) * 8;
+
+          // 活跃端口位置拉出尖峰波形
+          dataset.forEach(d => {
+            const px = (d.port / 65535) * w;
+            const dist = Math.abs(x - px);
+            if (dist < 15) {
+              wave += (15 - dist) * (d.conflict ? -3.5 : 2.5);
+            }
+          });
+
+          mechaCtx.lineTo(x, h / 2 + wave);
+        }
+
+        mechaCtx.strokeStyle = '#ff6b00';
+        mechaCtx.lineWidth = 2;
+        mechaCtx.stroke();
+
+        mechaTick += 0.04;
+      }
+      requestAnimationFrame(drawMechaSpectrum);
+    }
+    requestAnimationFrame(drawMechaSpectrum);
+
+    // ==========================================
+    // 通用强杀弹窗与终结执行
+    // ==========================================
+    function promptUniversalKill(target) {
+      targetPendingKill = target;
+      document.getElementById('uniPort').textContent = `:${target.port}`;
+      document.getElementById('uniName').textContent = target.name;
+      document.getElementById('uniPID').textContent = target.pid;
+      document.getElementById('uniMem').textContent = target.mem;
+      document.getElementById('uniPath').textContent = target.path;
+
+      const modal = document.getElementById('universalModal');
+      const box = document.getElementById('modalBox');
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        box.classList.remove('scale-95');
+      }, 10);
+      playAudioTone('pop');
+    }
+
+    function closeUniversalModal() {
+      const modal = document.getElementById('universalModal');
+      const box = document.getElementById('modalBox');
+      modal.classList.add('opacity-0');
+      box.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        targetPendingKill = null;
+      }, 200);
+    }
+
+    function executeUniversalKill(target) {
+      if (currentLayout === 'kanban') playAudioTone('stamp');
+      else if (currentLayout === 'mecha') playAudioTone('laser');
+      else playAudioTone('pop');
+
+      appendMechaLog(`<span class="text-rose-500">[KILL]</span> TerminateProcess(PID: ${target.pid}) -> PORT :${target.port} UNBOUND!`);
+
+      // 视觉淡出并移除
+      dataset = dataset.filter(d => d.id !== target.id);
+      selectedSet.delete(target.id);
+      renderAllLayouts();
+
+      showUniversalToast(`🎯 进程 [${target.name} - PID ${target.pid}] 已强杀，端口 :${target.port} 释放成功！`);
+    }
+
+    document.getElementById('modalXBtn').addEventListener('click', closeUniversalModal);
+    document.getElementById('modalDismissBtn').addEventListener('click', closeUniversalModal);
+    document.getElementById('modalActionKillBtn').addEventListener('click', () => {
+      if (targetPendingKill) {
+        const t = targetPendingKill;
+        closeUniversalModal();
+        executeUniversalKill(t);
+      }
+    });
+
+    // 批量强杀
+    document.getElementById('bentoBatchKillBtn').addEventListener('click', () => {
+      const targets = dataset.filter(d => selectedSet.has(d.id) && !d.protected);
+      if (targets.length === 0) return;
+      if (!confirm(`确定一次性终结选中的 ${targets.length} 个进程吗？`)) return;
+
+      playAudioTone('stamp');
+      dataset = dataset.filter(d => !selectedSet.has(d.id) || d.protected);
+      selectedSet.clear();
+      renderAllLayouts();
+      showUniversalToast(`⚡ 成功批量清理 ${targets.length} 个占用端口！`);
+    });
+
+    // 看板一键清理所有冲突
+    document.getElementById('kanbanKillAllAlertBtn').addEventListener('click', () => {
+      const conflicts = dataset.filter(d => d.conflict && !d.protected);
+      if (conflicts.length === 0) {
+        alert('当前无冲突高危项！');
+        return;
+      }
+      playAudioTone('stamp');
+      dataset = dataset.filter(d => !d.conflict || d.protected);
+      renderAllLayouts();
+      showUniversalToast(`💥 已彻底清洗 ${conflicts.length} 个高危占用端口！`);
+    });
+
+    // 注入新占用模拟
+    document.getElementById('addMockBtn').addEventListener('click', () => {
+      const p = [8088, 3001, 4000, 7070, 8848][Math.floor(Math.random() * 5)];
+      const pid = Math.floor(1000 + Math.random() * 80000);
+      const mock = {
+        id: Date.now(),
+        port: p,
+        proto: 'TCP',
+        name: 'mock_worker.exe',
+        pid: pid,
+        state: 'LISTENING',
+        mem: '148 MB',
+        path: `D:\\mock\\worker_${p}.exe`,
+        cat: 'dev',
+        protected: false,
+        conflict: true,
+        parent: 'cmd.exe'
+      };
+
+      dataset.unshift(mock);
+      playAudioTone('pop');
+      renderAllLayouts();
+      appendMechaLog(`<span class="text-amber-400">[DETECT]</span> Spawned mock_worker.exe occupied :${p} (PID: ${pid})`);
+      showUniversalToast(`⚠️ 探测到新进程抢占端口 :${p} (PID: ${pid})`);
+    });
+
+    // 重新扫描动画
+    document.getElementById('rescanGlobalBtn').addEventListener('click', () => {
+      playAudioTone('pop');
+      const ico = document.getElementById('refreshSpinIcon');
+      ico.classList.add('rotate-180');
+      setTimeout(() => ico.classList.remove('rotate-180'), 700);
+
+      appendMechaLog(`<span class="text-cyan-400">[SCAN]</span> Full kernel sweep finished. 0 EADDRINUSE conflicts.`);
+      showUniversalToast(`🔄 端口表已校准为最新实时状态`);
+      renderAllLayouts();
+    });
+
+    // 搜索与常用标签过滤 (Bento)
+    const bSearch = document.getElementById('bentoSearchInput');
+    const bClear = document.getElementById('bentoClearSearch');
+
+    bSearch.addEventListener('input', (e) => {
+      searchKeyword = e.target.value;
+      if (searchKeyword) bClear.classList.remove('hidden');
+      else bClear.classList.add('hidden');
+      renderBentoLayout();
+    });
+
+    bClear.addEventListener('click', () => {
+      bSearch.value = '';
+      searchKeyword = '';
+      bClear.classList.add('hidden');
+      renderBentoLayout();
+    });
+
+    document.querySelectorAll('.bento-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        playAudioTone('pop');
+        document.querySelectorAll('.bento-cat-btn').forEach(b => {
+          b.className = 'bento-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:border-slate-400 transition cursor-pointer';
+        });
+        btn.className = 'bento-cat-btn active px-3 py-1.5 rounded-full font-bold bg-[#0071e3] text-white transition shadow-sm cursor-pointer';
+        currentCat = btn.dataset.cat;
+        renderBentoLayout();
+      });
+    });
+
+    // 全局全选
+    document.getElementById('bentoSelectAll').addEventListener('change', (e) => {
+      playAudioTone('pop');
+      const filtered = getFilteredData();
+      if (e.target.checked) filtered.forEach(f => selectedSet.add(f.id));
+      else filtered.forEach(f => selectedSet.delete(f.id));
+      renderBentoLayout();
+    });
+
+    // 音效开关
+    document.getElementById('globalSoundBtn').addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundIco').textContent = soundEnabled ? '🔊' : '🔇';
+      document.getElementById('soundTxt').textContent = soundEnabled ? '触觉音效' : '已静音';
+      showUniversalToast(soundEnabled ? '音效反馈已开启' : '音效已静音');
+    });
+
+    // 浮动 Toast
+    function showUniversalToast(text) {
+      const box = document.getElementById('globalToastBox');
+      const toast = document.createElement('div');
+      toast.className = 'bg-white/95 backdrop-blur-md border border-slate-200 text-slate-900 px-4 py-3 rounded-2xl text-xs font-bold shadow-xl flex items-center gap-2 transform translate-y-3 opacity-0 transition-all duration-300 pointer-events-auto';
+      toast.innerHTML = `<span>⚡</span><span>${text}</span>`;
+      box.appendChild(toast);
+
+      setTimeout(() => toast.classList.remove('translate-y-3', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('translate-y-3', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    // 初始启动
+    renderAllLayouts();
+  </script>
+</body>
+</html>

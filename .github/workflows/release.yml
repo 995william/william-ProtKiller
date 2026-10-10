@@ -1,0 +1,62 @@
+name: 构建并发布 Release 单文件
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    name: 构建 Windows 单文件 EXE
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: 整理模块依赖
+        run: go mod tidy
+
+      - name: 编译单文件无控制台可执行文件 (PortKiller.exe)
+        run: |
+          go build -ldflags "-H windowsgui -s -w" -o PortKiller.exe
+
+      - name: 验证二进制产物与计算哈希值
+        id: check_file
+        shell: pwsh
+        run: |
+          $file = Get-Item PortKiller.exe
+          $hash = (Get-FileHash PortKiller.exe -Algorithm SHA256).Hash
+          Write-Host "File Size: $($file.Length) bytes"
+          Write-Host "SHA256: $hash"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "size=$($file.Length)"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "hash=$hash"
+
+      - name: 自动发布至 GitHub Releases 并上传二进制附件
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: PortKiller.exe
+          name: PortKiller Pro ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ### 🚀 PortKiller Pro ${{ github.ref_name }} 绿色独立单文件发布
+
+            #### 📦 下载指引
+            * **[PortKiller.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PortKiller.exe)**（独立便携单文件，大小约 2.27 MB）
+            * 免安装任何运行环境，双击即可直接运行（需允许管理员权限）。
+
+            #### 🛡️ 校验信息
+            * **SHA-256**: `${{ steps.check_file.outputs.hash }}`
