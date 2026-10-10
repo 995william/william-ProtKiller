@@ -14,7 +14,7 @@
 
 ## 二、 交互原型界面全景与 Canvas 引擎设计
 
-可交互原型已生成至工作区根目录：[prototype.html](file:///d:/DEV/my-project/william-ProtKiller/prototype.html)，以及系统面板 Artifact 中：[port_killer_prototype.html](file:///C:/Users/Administrator/.gemini/antigravity/brain/e5bc6481-fcdb-40a7-a4ce-fea18d9b380f/port_killer_prototype.html)。
+可交互原型请参阅工作区根目录中的：[prototype.html](../prototype.html)。
 
 ### 1. 全息 Canvas 雷达引擎架构
 - **坐标映射与空间分布**：

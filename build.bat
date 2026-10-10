@@ -7,20 +7,16 @@ echo   PortKiller Pro (端口占用终结者) 一键极速编译构建
 echo ============================================================
 echo.
 
-:: 1. 优先使用系统环境变量中的 Go，若未配置则尝试本地便携路径
+:: 1. 检查系统环境中是否已安装 Go 编译器
 where go >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    if exist "D:\DEV\environment\go\bin\go.exe" (
-        set "PATH=D:\DEV\environment\go\bin;%PATH%"
-    ) else (
-        echo [错误] 未在系统 PATH 或 D:\DEV\environment\go\bin 中检测到 Go 编译器！
-        echo 请先安装 Go 1.20+ 或配置环境变量后再试。
-        pause
-        exit /b 1
-    )
+    echo [错误] 未在系统 PATH 环境变量中检测到 Go 编译器！
+    echo 请先安装 Go 1.20+ 并将其加入环境变量: https://golang.google.cn/dl/
+    pause
+    exit /b 1
 )
 
-:: 设置代理加速依赖下载
+:: 设置代理加速依赖下载 (国内镜像)
 set GOPROXY=https://goproxy.cn,direct
 
 echo [1/2] 正在整理并校验 Go 模块依赖...
@@ -31,8 +27,8 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo [2/2] 正在编译纯绿色独立单文件 EXE (剥离调试符号、隐藏黑色控制台窗口)...
-go build -ldflags "-H windowsgui -s -w" -o PortKiller.exe
+echo [2/2] 正在编译纯绿色独立单文件 EXE (剥离调试符号与本地路径信息)...
+go build -trimpath -ldflags "-H windowsgui -s -w" -o PortKiller.exe
 if %ERRORLEVEL% NEQ 0 (
     echo [错误] 编译生成失败，请检查上方日志！
     pause
